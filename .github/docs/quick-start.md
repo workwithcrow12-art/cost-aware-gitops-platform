@@ -10,7 +10,12 @@
 | `finops-toolkit` | Báo cáo OpenCost, Athena và CSV billing nhiều cloud | Markdown ở stdout; thông báo là cấu hình tùy chọn |
 | `.github` | Kiến trúc, runbook và bằng chứng kiểm tra | Điểm bắt đầu để chọn đúng quy trình |
 
-Clone các repo cạnh nhau dưới cùng một thư mục. Mỗi repo có Git history và CI riêng. Chạy lệnh ở thư mục được ghi bên dưới; không cần chuyển sang monorepo.
+Từ v0.9, clone repository chung rồi chạy lệnh trong thư mục thành phần tương ứng. CI hoạt động ở `.github/workflows` tại root; các workflow lồng trong thành phần chỉ là ví dụ standalone.
+
+```bash
+git clone https://github.com/workwithcrow12-art/cost-aware-gitops-platform.git
+cd cost-aware-gitops-platform
+```
 
 ## 2. Demo offline trước, không cần tài khoản cloud
 

@@ -23,6 +23,7 @@ jobs:
       - run: finops cloud-report --input tests/fixtures/focus_sample.csv --as-of 2026-01-19
       - run: finops waste --input tests/fixtures/custodian --dry-run
       - run: docker build --tag finops-toolkit:ci .
+      - run: docker run --rm --network none --volume "$PWD/tests:/tests:ro" --entrypoint python finops-toolkit:ci -m unittest discover -s /tests -v
       - name: Scan FinOps image
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
         env:
