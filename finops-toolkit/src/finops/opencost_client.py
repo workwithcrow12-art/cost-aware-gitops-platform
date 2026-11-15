@@ -14,10 +14,10 @@ def parse_allocations(payload: dict[str, Any]) -> list[Cost]:
     rows = []
     for allocation_set in payload["data"]:
         if not isinstance(allocation_set, dict):
-            raise ValueError("OpenCost returned an invalid allocation set")
+            raise TypeError("OpenCost returned an invalid allocation set")
         for name, allocation in allocation_set.items():
             if not isinstance(name, str) or not isinstance(allocation, dict):
-                raise ValueError("OpenCost returned an invalid allocation")
+                raise TypeError("OpenCost returned an invalid allocation")
             parts = name.split("/")
             if "__idle__" in parts:
                 environment = team = "idle"

@@ -87,6 +87,10 @@ jobs:
           printf '%s\n' "$push_log"
           digest=$(awk -v tag="$REVISION:" '$1 == tag && $2 == "digest:" && $4 == "size:" {print $3}' <<< "$push_log")
           [[ $digest =~ ^sha256:[0-9a-f]{64}$ ]]
+          if [[ $GITHUB_REF == refs/tags/v0.9 ]]; then
+            docker tag "$IMAGE" "${IMAGE%:*}:v0.9"
+            docker push "${IMAGE%:*}:v0.9"
+          fi
           jq -n --arg revision "$REVISION" --arg digest "$digest" \
             '{revision: $revision, digest: $digest}' > "$RUNNER_TEMP/$SERVICE.json"
       - name: Store the scanned image record for this run

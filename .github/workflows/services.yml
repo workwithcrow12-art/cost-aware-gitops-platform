@@ -72,4 +72,3 @@ jobs:
         working-directory: boutique-app/src/${{ matrix.service }}
       - run: python -m unittest discover -v
         working-directory: boutique-app/src/${{ matrix.service }}
-

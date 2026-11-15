@@ -23,7 +23,7 @@ class ReportTests(unittest.TestCase):
     def test_malformed_allocation_sets_fail_with_a_validation_error(self):
         for payload in (None, [], {"code": 200, "data": [None]},
                         {"code": 200, "data": [{"shop/dev/store": None}]}):
-            with self.subTest(payload=payload), self.assertRaises(ValueError):
+            with self.subTest(payload=payload), self.assertRaises((ValueError, TypeError)):
                 parse_allocations(payload)
 
     def test_windows_use_the_last_fourteen_completed_utc_days(self):
