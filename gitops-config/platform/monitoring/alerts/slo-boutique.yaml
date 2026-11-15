@@ -1,0 +1,15 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: boutique-synthetic-health
+spec:
+  groups:
+    - name: boutique-synthetic
+      rules:
+        - alert: BoutiqueFrontendProbeFailing
+          expr: avg_over_time(probe_success{job="boutique-frontend-canary",instance=~".*[.]boutique-prod[.].*"}[5m]) < 0.99
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: The production frontend synthetic probe is failing

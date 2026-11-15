@@ -1,0 +1,82 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: platform-addons
+  namespace: argocd
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+    - list:
+        elements:
+          - name: argo-rollouts
+            chart: argo-rollouts
+            version: "2.43.9"
+            url: https://argoproj.github.io/argo-helm
+            namespace: argo-rollouts
+          - name: monitoring
+            chart: kube-prometheus-stack
+            version: "92.7.0"
+            url: https://prometheus-community.github.io/helm-charts
+            namespace: monitoring
+          - name: blackbox
+            chart: prometheus-blackbox-exporter
+            version: "11.20.2"
+            url: https://prometheus-community.github.io/helm-charts
+            namespace: monitoring
+          - name: opencost
+            chart: opencost
+            version: "2.5.20"
+            url: https://opencost.github.io/opencost-helm-chart
+            namespace: opencost
+          - name: kyverno
+            chart: kyverno
+            version: "3.8.1"
+            url: https://kyverno.github.io/kyverno
+            namespace: kyverno
+          - name: sealed-secrets
+            chart: sealed-secrets
+            version: "2.18.0"
+            url: https://bitnami.github.io/sealed-secrets
+            namespace: sealed-secrets
+          - name: kube-downscaler
+            chart: go-kube-downscaler
+            version: "1.4.0"
+            url: https://caas-team.github.io/helm-charts
+            namespace: kube-downscaler
+          - name: metrics-server
+            chart: metrics-server
+            version: "3.13.0"
+            url: https://kubernetes-sigs.github.io/metrics-server/
+            namespace: kube-system
+  template:
+    metadata:
+      name: 'platform-{{ .name }}'
+    spec:
+      project: platform
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: '{{ .namespace }}'
+      sources:
+        - repoURL: '{{ .url }}'
+          chart: '{{ .chart }}'
+          targetRevision: '{{ .version }}'
+          helm:
+            valueFiles:
+              - '$values/gitops-config/platform/{{ .name }}/values.yaml'
+        - repoURL: https://github.com/workwithcrow12-art/cost-aware-gitops-platform.git
+          targetRevision: main
+          ref: values
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+          - ServerSideApply=true
+        retry:
+          limit: 8
+          backoff:
+            duration: 10s
+            factor: 2
+            maxDuration: 3m

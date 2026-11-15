@@ -1,0 +1,7 @@
+# Helm bootstraps Argo CD before the root Application is submitted.
+configs:
+  cm:
+    application.resourceTrackingMethod: annotation
+server:
+  service:
+    type: ClusterIP

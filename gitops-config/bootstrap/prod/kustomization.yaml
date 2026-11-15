@@ -1,0 +1,35 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../projects
+  - ../../applicationsets
+  - ../../platform
+  - storage-app.yaml
+patches:
+  - target:
+      kind: ApplicationSet
+      name: boutique-envs
+    patch: |
+      - op: replace
+        path: /spec/generators/0/list/elements
+        value:
+          - env: prod
+  - patch: |
+      apiVersion: argoproj.io/v1alpha1
+      kind: ApplicationSet
+      metadata:
+        name: boutique-preview
+        namespace: argocd
+      $patch: delete
+  - target:
+      kind: ApplicationSet
+      name: platform-addons
+    patch: |
+      - op: remove
+        path: /spec/generators/0/list/elements/6
+      - op: add
+        path: /spec/template/spec/sources/0/helm/ignoreMissingValueFiles
+        value: true
+      - op: add
+        path: /spec/template/spec/sources/0/helm/valueFiles/-
+        value: '$values/gitops-config/platform/{{ .name }}/values-prod.yaml'

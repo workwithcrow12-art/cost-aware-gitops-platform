@@ -1,0 +1,76 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis-cart
+  labels:
+    app: redis-cart
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: redis-cart
+  template:
+    metadata:
+      labels:
+        app: redis-cart
+    spec:
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 5
+      containers:
+        - name: redis
+          image: docker.io/library/redis:8.10.3-alpine@sha256:71885d8cc6e42f2bc0aa2eb853bfc4be200b5108a46ac50e117ae1df0531fb80
+          command: ["/bin/sh", "-ec"]
+          args:
+            - |
+              case "$REDIS_PASSWORD" in
+                ""|*[!0-9a-f]*) exit 1 ;;
+              esac
+              [ "${#REDIS_PASSWORD}" -eq 64 ]
+              # Keep the password out of the Redis process arguments.
+              exec docker-entrypoint.sh redis-server - <<EOF
+              requirepass $REDIS_PASSWORD
+              EOF
+          env:
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: redis-cart
+                  key: password
+          ports:
+            - name: redis
+              containerPort: 6379
+          resources:
+            requests:
+              cpu: 70m
+              memory: 128Mi
+            limits:
+              cpu: 125m
+              memory: 256Mi
+          readinessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -ec
+                - '[ "$(REDISCLI_AUTH="$REDIS_PASSWORD" redis-cli --raw PING)" = PONG ]'
+          volumeMounts:
+            - name: redis-data
+              mountPath: /data
+      volumes:
+        - name: redis-data
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-cart
+  labels:
+    app: redis-cart
+spec:
+  selector:
+    app: redis-cart
+  ports:
+    - name: redis
+      port: 6379
+      targetPort: redis

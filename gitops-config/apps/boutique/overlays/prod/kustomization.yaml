@@ -1,0 +1,40 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: boutique-prod
+resources:
+  - ../../base
+  - namespace.yaml
+  - hpa.yaml
+  - pdb.yaml
+components:
+  - ../../components/restricted
+labels:
+  - pairs:
+      team: boutique
+      env: prod
+    includeTemplates: true
+patches:
+  - path: patch-resources.yaml
+    target:
+      kind: Rollout
+      name: frontend
+replacements:
+  - source:
+      kind: Namespace
+      name: boutique-prod
+      fieldPath: metadata.name
+    targets:
+      - select:
+          kind: Rollout
+          name: frontend
+        fieldPaths:
+          - spec.strategy.canary.steps.2.analysis.args.0.value
+          - spec.strategy.canary.steps.5.analysis.args.0.value
+      - select:
+          kind: Probe
+          name: frontend-canary
+        fieldPaths:
+          - spec.targets.staticConfig.static.0
+        options:
+          delimiter: "."
+          index: 1

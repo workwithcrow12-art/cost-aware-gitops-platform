@@ -1,0 +1,41 @@
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+  - package-ecosystem: docker
+    directories:
+      - /src/adservice
+      - /src/cartservice/src
+      - /src/checkoutservice
+      - /src/currencyservice
+      - /src/emailservice
+      - /src/frontend
+      - /src/loadgenerator
+      - /src/paymentservice
+      - /src/productcatalogservice
+      - /src/recommendationservice
+      - /src/shippingservice
+    schedule:
+      interval: weekly
+  - package-ecosystem: gomod
+    directories: [/src/checkoutservice, /src/frontend, /src/productcatalogservice, /src/shippingservice]
+    schedule:
+      interval: weekly
+  - package-ecosystem: npm
+    directories: [/src/currencyservice, /src/paymentservice]
+    schedule:
+      interval: weekly
+  - package-ecosystem: pip
+    directories: [/src/emailservice, /src/loadgenerator, /src/recommendationservice]
+    schedule:
+      interval: weekly
+  - package-ecosystem: nuget
+    directory: /src/cartservice
+    schedule:
+      interval: weekly
+  - package-ecosystem: gradle
+    directory: /src/adservice
+    schedule:
+      interval: weekly

@@ -1,0 +1,11 @@
+policies:
+  - name: unattached-ebs
+    resource: aws.ebs
+    description: Find currently available EBS volumes created more than seven days ago.
+    filters:
+      - State: available
+      - type: value
+        key: CreateTime
+        value_type: age
+        op: greater-than
+        value: 7

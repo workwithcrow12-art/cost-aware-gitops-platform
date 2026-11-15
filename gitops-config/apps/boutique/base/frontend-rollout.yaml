@@ -1,0 +1,89 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: frontend
+  labels:
+    app: frontend
+spec:
+  replicas: 2
+  revisionHistoryLimit: 2
+  progressDeadlineSeconds: 900
+  progressDeadlineAbort: true
+  strategy:
+    canary:
+      canaryService: frontend-canary
+      maxSurge: 1
+      maxUnavailable: 0
+      steps:
+        # At two replicas, 25% plus one surge allows a measurable candidate.
+        - setWeight: 25
+        - pause:
+            duration: 60s
+        - analysis:
+            templates:
+              - templateName: frontend-canary
+            args:
+              - name: namespace
+                value: boutique-dev
+        - setWeight: 50
+        - pause:
+            duration: 60s
+        - analysis:
+            templates:
+              - templateName: frontend-canary
+            args:
+              - name: namespace
+                value: boutique-dev
+        - setWeight: 100
+  selector:
+    matchLabels:
+      app: frontend
+  template:
+    metadata:
+      labels:
+        app: frontend
+    spec:
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 5
+      containers:
+        - name: server
+          image: us-central1-docker.pkg.dev/online-boutique-ci/microservices-demo/frontend@sha256:e1cbd4561d3c9d27497dc0e8b1c12da194c4bf2ea82648f58bf38f073698f483
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            - name: PORT
+              value: "8080"
+            - name: ENV_PLATFORM
+              value: "aws"
+            - name: PRODUCT_CATALOG_SERVICE_ADDR
+              value: "productcatalogservice:3550"
+            - name: CURRENCY_SERVICE_ADDR
+              value: "currencyservice:7000"
+            - name: CART_SERVICE_ADDR
+              value: "cartservice:7070"
+            - name: RECOMMENDATION_SERVICE_ADDR
+              value: "recommendationservice:8080"
+            - name: CHECKOUT_SERVICE_ADDR
+              value: "checkoutservice:5050"
+            - name: SHIPPING_SERVICE_ADDR
+              value: "shippingservice:50051"
+            - name: AD_SERVICE_ADDR
+              value: "adservice:9555"
+            - name: SHOPPING_ASSISTANT_SERVICE_ADDR
+              value: "unused:80"
+          resources:
+            requests:
+              cpu: 100m
+              memory: 64Mi
+            limits:
+              cpu: 300m
+              memory: 128Mi
+          readinessProbe:
+            httpGet:
+              path: /_healthz
+              port: http
+          livenessProbe:
+            httpGet:
+              path: /_healthz
+              port: http

@@ -1,0 +1,15 @@
+fullnameOverride: opencost
+opencost:
+  prometheus:
+    internal:
+      enabled: true
+      serviceName: monitoring-prometheus
+      namespaceName: monitoring
+      port: 9090
+    external:
+      enabled: false
+  metrics:
+    serviceMonitor:
+      enabled: true
+      additionalLabels:
+        release: platform-monitoring

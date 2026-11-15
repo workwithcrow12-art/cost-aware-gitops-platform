@@ -1,0 +1,65 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: boutique-preview
+  namespace: argocd
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+    - matrix:
+        generators:
+          - pullRequest:
+              requeueAfterSeconds: 180
+              filters:
+                - targetBranchMatch: '^main$'
+              github:
+                owner: workwithcrow12-art
+                repo: cost-aware-gitops-platform
+                labels:
+                  - preview
+          - git:
+              repoURL: https://github.com/workwithcrow12-art/cost-aware-gitops-platform.git
+              revision: main
+              files:
+                - path: 'gitops-config/apps/boutique/preview-releases/{{ .number }}/{{ .head_sha }}.json'
+  template:
+    metadata:
+      name: 'boutique-pr-{{ .number }}'
+      finalizers:
+        - resources-finalizer.argocd.argoproj.io
+    spec:
+      project: boutique
+      source:
+        repoURL: https://github.com/workwithcrow12-art/cost-aware-gitops-platform.git
+        targetRevision: main
+        path: gitops-config/apps/boutique/overlays/preview
+        kustomize:
+          namespace: 'boutique-pr-{{ .number }}'
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: 'boutique-pr-{{ .number }}'
+      ignoreDifferences:
+        - group: ""
+          kind: Service
+          name: frontend-canary
+          jsonPointers:
+            - /spec/selector/rollouts-pod-template-hash
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - SkipDryRunOnMissingResource=true
+          - RespectIgnoreDifferences=true
+        retry:
+          limit: 8
+          backoff:
+            duration: 10s
+            factor: 2
+            maxDuration: 3m
+  templatePatch: |
+    spec:
+      source:
+        kustomize:
+          images: {{ .images | toJson }}

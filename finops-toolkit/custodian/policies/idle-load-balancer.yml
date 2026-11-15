@@ -1,0 +1,18 @@
+policies:
+  - name: idle-load-balancer
+    resource: aws.app-elb
+    description: Find application load balancers with zero requests over the last 14 days.
+    filters:
+      - Type: application
+      - type: value
+        key: CreatedTime
+        value_type: age
+        op: greater-than
+        value: 14
+      - type: metrics
+        name: RequestCount
+        statistics: Sum
+        days: 14
+        value: 0
+        missing-value: 0
+        op: equal

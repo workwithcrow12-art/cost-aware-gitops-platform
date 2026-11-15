@@ -1,0 +1,20 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-restricted-pods
+spec:
+  background: true
+  rules:
+    - name: restricted
+      match:
+        any:
+          - resources:
+              kinds: [Pod]
+              namespaces: [boutique-*]
+      validate:
+        failureAction: Enforce
+        message: Boutique pods must meet the Kubernetes restricted Pod Security Standard.
+        podSecurity:
+          level: restricted
+          # Pin a standard supported by the installed Kyverno CLI/controller.
+          version: v1.32

@@ -1,0 +1,14 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../nonprod
+patches:
+  - target:
+      kind: ApplicationSet
+      name: platform-addons
+    patch: |
+      - op: test
+        path: /spec/generators/0/list/elements/7/name
+        value: metrics-server
+      - op: remove
+        path: /spec/generators/0/list/elements/7

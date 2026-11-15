@@ -1,0 +1,5 @@
+period,environment,team,service,cost,usage_days
+current,prod,store,AmazonEC2,105.00,7
+current,dev,store,AmazonEKS,35.00,7
+previous,prod,store,AmazonEC2,120.00,7
+previous,dev,store,AmazonEKS,45.00,7

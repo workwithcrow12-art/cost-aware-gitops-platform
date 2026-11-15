@@ -1,0 +1,106 @@
+apiVersion: cli.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: boutique-cost-guardrails
+policies:
+  - ../policies/require-cost-labels.yaml
+  - ../policies/require-resource-limits.yaml
+  - ../policies/require-image-digest.yaml
+resources:
+  - resources.yaml
+  - resources-edge-cases.yaml
+results:
+  - policy: require-cost-labels
+    rule: cost-labels
+    kind: Pod
+    resources:
+      - valid
+    result: pass
+  - policy: require-cost-labels
+    rule: cost-labels
+    kind: Pod
+    resources:
+      - missing-cost-labels
+    result: fail
+  - policy: require-resource-limits
+    rule: compute-resources
+    kind: Pod
+    resources:
+      - valid
+    result: pass
+  - policy: require-resource-limits
+    rule: compute-resources
+    kind: Pod
+    resources:
+      - missing-resources
+    result: fail
+  - policy: require-image-digest
+    rule: pinned-image-digest
+    kind: Pod
+    resources:
+      - valid
+    result: pass
+  - policy: require-image-digest
+    rule: pinned-image-digest
+    kind: Pod
+    resources:
+      - latest-image
+      - ordinary-tag
+    result: fail
+  - policy: require-image-digest
+    rule: pinned-image-digest
+    kind: Pod
+    resources:
+      - untagged-registry-image
+    result: fail
+  - policy: require-image-digest
+    rule: pinned-image-digest
+    kind: Pod
+    resources:
+      - outside-boutique
+    result: skip
+  - policy: require-resource-limits
+    rule: compute-resources
+    kind: Pod
+    resources: [missing-memory-limit, init-without-resources]
+    result: fail
+  - policy: require-resource-limits
+    rule: compute-resources
+    kind: Pod
+    resources: [valid-init]
+    result: pass
+  - policy: require-image-digest
+    rule: pinned-image-digest
+    kind: Pod
+    resources: [init-tagged-image]
+    result: fail
+  - policy: require-resource-limits
+    rule: autogen-compute-resources
+    kind: Deployment
+    resources: [deployment-without-limits]
+    result: fail
+  - policy: require-resource-limits
+    rule: autogen-compute-resources
+    kind: Deployment
+    resources: [valid-deployment]
+    result: pass
+  - policy: require-cost-labels
+    rule: autogen-cost-labels
+    kind: Deployment
+    resources: [valid-deployment]
+    result: pass
+  - policy: require-image-digest
+    rule: autogen-pinned-image-digest
+    kind: Deployment
+    resources: [valid-deployment]
+    result: pass
+  - policy: require-cost-labels
+    rule: cost-labels
+    kind: Pod
+    resources: [outside-boutique]
+    result: skip
+  - policy: require-resource-limits
+    rule: compute-resources
+    kind: Pod
+    resources: [outside-boutique]
+    result: skip

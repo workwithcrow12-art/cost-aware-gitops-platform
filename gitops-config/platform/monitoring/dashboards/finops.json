@@ -1,0 +1,140 @@
+{
+  "uid": "finops-baseline",
+  "title": "FinOps allocation and availability",
+  "schemaVersion": 39,
+  "version": 1,
+  "tags": [
+    "finops"
+  ],
+  "timezone": "browser",
+  "refresh": "1m",
+  "time": {
+    "from": "now-24h",
+    "to": "now"
+  },
+  "templating": {
+    "list": [
+      {
+        "name": "datasource",
+        "type": "datasource",
+        "query": "prometheus",
+        "label": "Prometheus"
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Estimated node cost per hour",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 0
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(node_total_hourly_cost)",
+          "legendFormat": "{{namespace}}{{instance}}"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "CPU allocation cost per hour by namespace",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 0
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (namespace) (container_cpu_allocation * on(node) group_left node_cpu_hourly_cost)",
+          "legendFormat": "{{namespace}}{{instance}}"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Memory allocation cost per hour by namespace",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (namespace) (container_memory_allocation_bytes / 1073741824 * on(node) group_left node_ram_hourly_cost)",
+          "legendFormat": "{{namespace}}{{instance}}"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Frontend candidate availability",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "avg by (instance) (probe_success{job=\"boutique-frontend-canary\"})",
+          "legendFormat": "{{namespace}}{{instance}}"
+        }
+      ]
+    }
+  ],
+  "description": "OpenCost allocation estimates and canary availability. Node and workload costs overlap; do not add them. Waste estimates remain in the weekly CLI report."
+}

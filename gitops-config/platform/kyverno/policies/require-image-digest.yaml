@@ -1,0 +1,26 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-image-digest
+spec:
+  background: true
+  rules:
+    - name: pinned-image-digest
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+              namespaces:
+                - boutique-*
+      validate:
+        failureAction: Enforce
+        message: Images must reference a SHA-256 manifest digest.
+        foreach:
+          - list: "request.object.spec.[initContainers, ephemeralContainers, containers][]"
+            deny:
+              conditions:
+                any:
+                  - key: "{{ regex_match('^([^/]+/)*[^/:@]+(:[^/:@]+)?@sha256:[a-f0-9]{64}$', '{{ element.image }}') }}"
+                    operator: Equals
+                    value: false

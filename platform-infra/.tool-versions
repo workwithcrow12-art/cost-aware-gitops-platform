@@ -1,0 +1,5 @@
+terraform 1.11.4
+kubectl 1.35.0
+helm 3.18.6
+conftest 0.62.0
+tflint 0.61.0

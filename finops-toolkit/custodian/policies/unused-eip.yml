@@ -1,0 +1,6 @@
+policies:
+  - name: unused-eip
+    resource: aws.elastic-ip
+    description: Find allocated Elastic IP addresses without an association.
+    filters:
+      - AssociationId: absent

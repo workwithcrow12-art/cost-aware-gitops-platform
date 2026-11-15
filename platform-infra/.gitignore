@@ -1,0 +1,55 @@
+# =====================================================================
+# Shared ignore rules
+# =====================================================================
+# Operating system and editor files
+.DS_Store
+Thumbs.db
+*.swp
+*~
+.idea/
+.vscode/
+
+# Local secrets and credentials
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+kubeconfig
+kubeconfig*
+*.kubeconfig
+credentials
+credentials.json
+
+# =====================================================================
+# platform-infra (Terraform)
+# =====================================================================
+# Downloaded providers and modules
+.terraform/
+# Local state files
+*.tfstate
+*.tfstate.*
+# Plans can contain sensitive values.
+*.tfplan
+tfplan
+# Terraform crash logs
+crash.log
+crash.*.log
+# Local overrides
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+# Personal CLI settings
+.terraformrc
+terraform.rc
+# Local sensitive variables
+*.secret.tfvars
+*.auto.tfvars
+# Track .terraform.lock.hcl to pin provider versions.
+
+# Local tool output
+.infracost/
+infracost-*.json
+.tflint.d/

@@ -1,0 +1,2 @@
+# Supply Kubernetes resource metrics for the production frontend HPA.
+replicas: 1

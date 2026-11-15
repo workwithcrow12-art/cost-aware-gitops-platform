@@ -1,0 +1,8 @@
+constrainedNamespaces:
+  - boutique-dev
+  - boutique-staging
+includedResources:
+  - deployments
+  - rollouts
+serviceAccount:
+  name: kube-downscaler

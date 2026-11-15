@@ -1,0 +1,23 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-cost-labels
+spec:
+  background: true
+  rules:
+    - name: cost-labels
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+              namespaces:
+                - boutique-*
+      validate:
+        failureAction: Enforce
+        message: Pods must declare team and env labels for cost allocation.
+        pattern:
+          metadata:
+            labels:
+              team: "?*"
+              env: "?*"

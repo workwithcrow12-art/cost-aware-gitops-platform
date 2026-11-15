@@ -1,0 +1,28 @@
+apiVersion: kustomize.config.k8s.io/v1alpha1
+kind: Component
+patches:
+  - target:
+      kind: Deployment|Rollout
+    patch: |
+      - op: add
+        path: /spec/template/spec/securityContext
+        value:
+          runAsNonRoot: true
+          runAsUser: 1000
+          runAsGroup: 1000
+          seccompProfile:
+            type: RuntimeDefault
+      # All current Boutique workloads have one container; policy also checks future sidecars.
+      - op: add
+        path: /spec/template/spec/containers/0/securityContext
+        value:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: [ALL]
+  - target:
+      kind: Deployment
+      name: redis-cart
+    patch: |
+      - op: add
+        path: /spec/template/spec/securityContext/fsGroup
+        value: 1000

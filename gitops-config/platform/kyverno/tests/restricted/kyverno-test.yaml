@@ -1,0 +1,19 @@
+apiVersion: cli.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: restricted-pods
+policies:
+  - ../../policies/require-restricted-pods.yaml
+resources:
+  - resources.yaml
+results:
+  - policy: require-restricted-pods
+    rule: restricted
+    resources: [safe]
+    kind: Pod
+    result: pass
+  - policy: require-restricted-pods
+    rule: restricted
+    resources: [root, privileged, unsafe-init]
+    kind: Pod
+    result: fail

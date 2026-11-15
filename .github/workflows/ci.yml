@@ -1,0 +1,29 @@
+name: Release validation
+on:
+  push:
+    branches: [main, 'codex/**']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: validation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  finops:
+    uses: ./.github/workflows/finops.yml
+  services:
+    uses: ./.github/workflows/services.yml
+  terraform:
+    uses: ./.github/workflows/terraform.yml
+  gitops:
+    uses: ./.github/workflows/gitops.yml
+  images:
+    needs: [finops, services, terraform, gitops]
+    uses: ./.github/workflows/images.yml
+    with:
+      revision: ${{ github.sha }}
+      publish: false

@@ -1,0 +1,8 @@
+policies:
+  - name: old-snapshots
+    resource: aws.ebs-snapshot
+    description: Find EBS snapshots over 90 days old for manual retention review.
+    filters:
+      - type: age
+        days: 90
+        op: greater-than

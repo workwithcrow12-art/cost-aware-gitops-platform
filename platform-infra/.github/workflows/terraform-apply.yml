@@ -1,0 +1,142 @@
+name: Apply Terraform
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: EKS environment to apply
+        type: choice
+        required: true
+        options: [nonprod, prod]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: terraform-apply-${{ inputs.environment }}
+  cancel-in-progress: false
+
+jobs:
+  plan:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      ENVIRONMENT: ${{ inputs.environment }}
+      STATE_BUCKET: ${{ vars.TF_STATE_BUCKET }}
+      STATE_BUCKET_REGION: ${{ vars.TF_STATE_REGION || 'ap-southeast-1' }}
+      TF_VAR_aws_region: ${{ vars.AWS_REGION || 'ap-southeast-1' }}
+      TF_VAR_operator_access_cidrs: ${{ vars.EKS_OPERATOR_ACCESS_CIDRS }}
+      TF_VAR_operator_role_arn: ${{ vars.EKS_OPERATOR_ROLE_ARN }}
+    outputs:
+      artifact-id: ${{ steps.artifact.outputs.artifact-id }}
+      plan-sha: ${{ steps.plan.outputs.sha }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        with:
+          terraform_version: 1.11.4
+          terraform_wrapper: false
+      - name: Check required settings
+        env:
+          AWS_PLAN_ROLE_ARN: ${{ vars.AWS_PLAN_ROLE_ARN }}
+          EXPECTED_AWS_ACCOUNT_ID: ${{ vars.AWS_ACCOUNT_ID }}
+        run: |
+          test -n "$AWS_PLAN_ROLE_ARN" && test -n "$STATE_BUCKET" &&
+            [[ "$EXPECTED_AWS_ACCOUNT_ID" =~ ^[0-9]{12}$ ]] &&
+            test -n "$TF_VAR_operator_access_cidrs" && test -n "$TF_VAR_operator_role_arn" || {
+              echo 'Set AWS_ACCOUNT_ID, AWS_PLAN_ROLE_ARN, TF_STATE_BUCKET, EKS_OPERATOR_ACCESS_CIDRS and EKS_OPERATOR_ROLE_ARN.' >&2
+              exit 1
+            }
+      - run: make validate
+      - name: Install the verified policy checker
+        run: |
+          archive="$RUNNER_TEMP/conftest_0.62.0_Linux_x86_64.tar.gz"
+          curl --fail --silent --show-error --location -o "$archive" \
+            https://github.com/open-policy-agent/conftest/releases/download/v0.62.0/conftest_0.62.0_Linux_x86_64.tar.gz
+          printf '284231908e4cf66d156e5577c3eee2f67d9f2edf2521fa2309e0df1969f871e5  %s\n' "$archive" | sha256sum --check
+          tar -xzf "$archive" -C "$RUNNER_TEMP" conftest
+          echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
+      - uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          role-to-assume: ${{ vars.AWS_PLAN_ROLE_ARN }}
+          aws-region: ${{ env.TF_VAR_aws_region }}
+          allowed-account-ids: ${{ vars.AWS_ACCOUNT_ID }}
+          role-session-name: terraform-plan-${{ github.run_id }}
+      - name: Create the plan for review
+        id: plan
+        run: |
+          plan_dir="$RUNNER_TEMP/reviewed-plan"
+          mkdir -p "$plan_dir"
+          make init ENV="$ENVIRONMENT"
+          terraform -chdir="envs/$ENVIRONMENT" plan -input=false -out="$plan_dir/tfplan"
+          terraform -chdir="envs/$ENVIRONMENT" show -json "$plan_dir/tfplan" > "$RUNNER_TEMP/tfplan.json"
+          conftest test "$RUNNER_TEMP/tfplan.json" --policy policies
+          terraform -chdir="envs/$ENVIRONMENT" show -no-color "$plan_dir/tfplan" > "$plan_dir/plan.txt"
+          date +%s > "$plan_dir/created-at"
+          echo "sha=$(sha256sum "$plan_dir/tfplan" | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+          echo "Review the plan artifact for **$ENVIRONMENT** at commit **$GITHUB_SHA**, then approve the apply job. The plan expires in 24 hours. Plan artifacts may contain sensitive state; restrict repository access." >> "$GITHUB_STEP_SUMMARY"
+      - name: Store the reviewed plan
+        id: artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: terraform-plan-${{ inputs.environment }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/reviewed-plan/
+          if-no-files-found: error
+          retention-days: 1
+
+  apply:
+    needs: plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    environment: ${{ inputs.environment }}
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      ENVIRONMENT: ${{ inputs.environment }}
+      STATE_BUCKET: ${{ vars.TF_STATE_BUCKET }}
+      STATE_BUCKET_REGION: ${{ vars.TF_STATE_REGION || 'ap-southeast-1' }}
+      TF_VAR_aws_region: ${{ vars.AWS_REGION || 'ap-southeast-1' }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        with:
+          terraform_version: 1.11.4
+          terraform_wrapper: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          artifact-ids: ${{ needs.plan.outputs.artifact-id }}
+          path: ${{ runner.temp }}/reviewed-plan
+          merge-multiple: true
+      - name: Verify plan integrity and age
+        env:
+          PLAN_SHA: ${{ needs.plan.outputs.plan-sha }}
+        run: |
+          cd "$RUNNER_TEMP/reviewed-plan"
+          [[ "$PLAN_SHA" =~ ^[0-9a-f]{64}$ ]]
+          printf '%s  tfplan\n' "$PLAN_SHA" | sha256sum --check
+          created=$(cat created-at)
+          [[ "$created" =~ ^[0-9]+$ ]]
+          age=$(( $(date +%s) - created ))
+          [ "$age" -ge 0 ] && [ "$age" -lt 86400 ] || {
+            echo 'Plan expired. Start a new workflow run and review its new plan.' >&2
+            exit 1
+          }
+      - uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          role-to-assume: ${{ vars.AWS_APPLY_ROLE_ARN }}
+          aws-region: ${{ env.TF_VAR_aws_region }}
+          allowed-account-ids: ${{ vars.AWS_ACCOUNT_ID }}
+          role-session-name: terraform-apply-${{ github.run_id }}
+      - name: Apply only the approved plan
+        run: |
+          make init ENV="$ENVIRONMENT"
+          terraform -chdir="envs/$ENVIRONMENT" apply -input=false "$RUNNER_TEMP/reviewed-plan/tfplan"

@@ -1,0 +1,62 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: boutique-envs
+  namespace: argocd
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+    - list:
+        elements:
+          - env: dev
+          - env: staging
+  template:
+    metadata:
+      name: 'boutique-{{ .env }}'
+    spec:
+      project: boutique
+      source:
+        repoURL: https://github.com/workwithcrow12-art/cost-aware-gitops-platform.git
+        targetRevision: main
+        path: 'gitops-config/apps/boutique/overlays/{{ .env }}'
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: 'boutique-{{ .env }}'
+      syncPolicy:
+        syncOptions:
+          - SkipDryRunOnMissingResource=true
+          - RespectIgnoreDifferences=true
+        retry:
+          limit: 8
+          backoff:
+            duration: 10s
+            factor: 2
+            maxDuration: 3m
+  templatePatch: |
+    spec:
+      ignoreDifferences:
+        - group: ""
+          kind: Service
+          name: frontend-canary
+          jsonPointers:
+            - /spec/selector/rollouts-pod-template-hash
+        {{- if ne .env "prod" }}
+        - group: apps
+          kind: Deployment
+          jsonPointers:
+            - /spec/replicas
+        {{- end }}
+        - group: argoproj.io
+          kind: Rollout
+          {{- if eq .env "prod" }}
+          name: frontend
+          {{- end }}
+          jsonPointers:
+            - /spec/replicas
+      {{- if ne .env "prod" }}
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+      {{- end }}

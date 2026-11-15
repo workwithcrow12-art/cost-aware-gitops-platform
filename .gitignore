@@ -1,0 +1,17 @@
+.idea/
+.agents/
+.codex/
+**/.git/
+**/modernize/
+**/node_modules/
+**/__pycache__/
+**/.terraform/
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.tfstate*
+*.tfplan
+*.secret.tfvars
+*.auto.tfvars

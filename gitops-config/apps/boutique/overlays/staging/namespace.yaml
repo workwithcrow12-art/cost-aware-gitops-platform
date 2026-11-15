@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: boutique-staging
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+    downscaler/uptime: Mon-Fri 08:00-20:00 Asia/Ho_Chi_Minh

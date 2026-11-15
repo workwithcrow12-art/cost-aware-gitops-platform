@@ -1,0 +1,38 @@
+name: finops-toolkit checks
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: finops-toolkit
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - run: python -m pip install '.[dev,custodian]'
+      - run: make lint test
+      - run: custodian validate custodian/policies/*.yml
+      - run: finops report --fixtures tests/fixtures
+      - run: finops cloud-report --input tests/fixtures/focus_sample.csv --as-of 2026-01-19
+      - run: finops waste --input tests/fixtures/custodian --dry-run
+      - run: docker build --tag finops-toolkit:ci .
+      - name: Scan FinOps image
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
+        env:
+          TRIVY_IMAGE_SRC: docker
+        with:
+          version: v0.76.2
+          image-ref: finops-toolkit:ci
+          scanners: vuln
+          severity: HIGH,CRITICAL
+          exit-code: '1'
+          timeout: 10m0s
+      - run: docker run --rm --volume "$PWD/tests/fixtures:/fixtures:ro" finops-toolkit:ci report --fixtures /fixtures
+      - run: docker run --rm --volume "$PWD/tests/fixtures:/fixtures:ro" finops-toolkit:ci cloud-report --input /fixtures/focus_sample.csv --as-of 2026-01-19

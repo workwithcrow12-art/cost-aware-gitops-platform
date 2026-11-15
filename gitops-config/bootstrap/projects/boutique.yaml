@@ -1,0 +1,16 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: boutique
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"
+spec:
+  sourceRepos:
+    - https://github.com/workwithcrow12-art/cost-aware-gitops-platform.git
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: boutique-*
+  clusterResourceWhitelist:
+    - group: ""
+      kind: Namespace

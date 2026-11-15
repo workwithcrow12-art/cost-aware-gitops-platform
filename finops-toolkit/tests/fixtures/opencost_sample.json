@@ -1,0 +1,19 @@
+{
+  "as_of": "2026-01-05",
+  "current": {
+    "code": 200,
+    "data": [{
+      "boutique-prod/prod/store": {"totalCost": 60.123},
+      "boutique-dev/dev/store": {"totalCost": 20.343},
+      "__idle__": {"totalCost": 9}
+    }]
+  },
+  "previous": {
+    "code": 200,
+    "data": [{
+      "boutique-prod/prod/store": {"totalCost": 72},
+      "boutique-dev/dev/store": {"totalCost": 22},
+      "__idle__": {"totalCost": 10}
+    }]
+  }
+}

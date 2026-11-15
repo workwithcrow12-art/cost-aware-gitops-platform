@@ -1,0 +1,23 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: frontend-canary
+spec:
+  args:
+    - name: namespace
+  metrics:
+    - name: synthetic-http-error-ratio
+      interval: 30s
+      count: 3
+      failureLimit: 0
+      consecutiveErrorLimit: 1
+      successCondition: len(result) == 1 && result[0] <= 0.01
+      failureCondition: len(result) != 1 || result[0] > 0.01
+      provider:
+        prometheus:
+          address: http://monitoring-prometheus.monitoring.svc.cluster.local:9090
+          query: |
+            1 - avg(avg_over_time(probe_success{
+              job="boutique-frontend-canary",
+              instance="http://frontend-canary.{{args.namespace}}.svc.cluster.local:8080/"
+            }[45s]))

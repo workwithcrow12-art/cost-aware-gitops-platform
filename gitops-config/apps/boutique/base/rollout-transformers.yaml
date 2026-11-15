@@ -1,0 +1,5 @@
+templateLabels:
+  - group: argoproj.io
+    kind: Rollout
+    path: spec/template/metadata/labels
+    create: true

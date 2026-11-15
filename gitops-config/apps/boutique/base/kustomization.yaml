@@ -1,0 +1,24 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - services/adservice.yaml
+  - services/cartservice.yaml
+  - services/checkoutservice.yaml
+  - services/currencyservice.yaml
+  - services/emailservice.yaml
+  - services/paymentservice.yaml
+  - services/productcatalogservice.yaml
+  - services/recommendationservice.yaml
+  - services/shippingservice.yaml
+  - services/redis-cart.yaml
+  - frontend-rollout.yaml
+  - frontend-service.yaml
+  - frontend-probe.yaml
+  - analysis-template.yaml
+  - network-policies.yaml
+configurations:
+  - rollout-transformers.yaml
+labels:
+  - pairs:
+      team: boutique
+    includeTemplates: true

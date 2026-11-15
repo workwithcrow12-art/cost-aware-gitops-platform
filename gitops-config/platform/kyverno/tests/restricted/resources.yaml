@@ -1,0 +1,85 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: safe
+  namespace: boutique-dev
+spec:
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+  - name: app
+    image: example.invalid/app:test
+    securityContext:
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop:
+        - ALL
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: root
+  namespace: boutique-dev
+spec:
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 0
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+  - name: app
+    image: example.invalid/app:test
+    securityContext:
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop:
+        - ALL
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: privileged
+  namespace: boutique-dev
+spec:
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+  - name: app
+    image: example.invalid/app:test
+    securityContext:
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop:
+        - ALL
+      privileged: true
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: unsafe-init
+  namespace: boutique-dev
+spec:
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+  - name: app
+    image: example.invalid/app:test
+    securityContext:
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop:
+        - ALL
+  initContainers:
+  - name: init
+    image: example.invalid/init:test
+    securityContext:
+      runAsUser: 0

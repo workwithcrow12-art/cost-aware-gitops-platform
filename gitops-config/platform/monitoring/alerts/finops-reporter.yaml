@@ -1,0 +1,19 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: finops-reporter-health
+spec:
+  groups:
+    - name: finops-reporter
+      rules:
+        - alert: FinOpsReporterFailed
+          expr: |
+            (kube_job_failed{namespace="finops", condition="true"} > 0)
+            * on (namespace, job_name) group_left(owner_name)
+            kube_job_owner{namespace="finops", owner_kind="CronJob", owner_name="finops-reporter"}
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: The weekly FinOps reporter job failed
+            description: 'Inspect job {{ $labels.job_name }} in finops; check its logs and credentials before retrying.'

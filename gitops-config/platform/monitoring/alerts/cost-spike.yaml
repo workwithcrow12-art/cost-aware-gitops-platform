@@ -1,0 +1,15 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: opencost-lab-spend
+spec:
+  groups:
+    - name: opencost-lab
+      rules:
+        - alert: OpenCostEstimatedClusterRateHigh
+          expr: sum(node_total_hourly_cost) > 1
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: Estimated node cost is above one USD per hour
