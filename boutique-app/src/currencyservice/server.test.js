@@ -64,3 +64,10 @@ test('converts EUR to USD using the published rate', async () => {
   const rate = require('./data/currency_conversion.json').USD;
   assert.ok(Math.abs(Number(result.units) + result.nanos / 1e9 - rate) < 1e-8);
 });
+
+test('constructs the supported OTLP gRPC trace exporter', async () => {
+  const { OTLPTraceExporter } = require('@opentelemetry/exporter-trace-otlp-grpc');
+  const exporter = new OTLPTraceExporter({ url: 'http://127.0.0.1:4317' });
+  assert.equal(typeof exporter.export, 'function');
+  await exporter.shutdown();
+});

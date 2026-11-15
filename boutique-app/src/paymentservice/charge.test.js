@@ -50,3 +50,10 @@ test('charge handler does not log the card number or CVV', (t) => {
   assert.ok(!output.includes(payment.credit_card.credit_card_number));
   assert.ok(!output.includes(String(payment.credit_card.credit_card_cvv)));
 });
+
+test('constructs the supported OTLP gRPC trace exporter', async () => {
+  const { OTLPTraceExporter } = require('@opentelemetry/exporter-trace-otlp-grpc');
+  const exporter = new OTLPTraceExporter({ url: 'http://127.0.0.1:4317' });
+  assert.equal(typeof exporter.export, 'function');
+  await exporter.shutdown();
+});

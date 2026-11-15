@@ -45,6 +45,10 @@ WORKDIR /recommendationservice
 # Grab packages from builder
 COPY --from=builder /usr/local/lib/python3.14/ /usr/local/lib/python3.14/
 
+# Package installers and their vendored dependencies are not needed at runtime.
+RUN python -m pip uninstall -y pip \
+    && rm -rf /usr/local/lib/python3.14/ensurepip
+
 # Add the application
 COPY . .
 

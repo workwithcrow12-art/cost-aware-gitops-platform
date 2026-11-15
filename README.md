@@ -2,7 +2,7 @@
 
 A portfolio lab for delivering Google Online Boutique with Terraform, Argo CD, automated image promotion and cost reporting. The primary path uses AWS EKS; optional nonprod Terraform roots support GKE and AKS.
 
-**v0.9 preparation:** [Changes, review reconciliation and release gates](.github/docs/releases/v0.9.md). Release validation and GitHub publication are still pending.
+**v0.9:** [Changes and release gates](.github/docs/releases/v0.9.md) · [Validation runs](https://github.com/workwithcrow12-art/cost-aware-gitops-platform/actions) · [Published releases](https://github.com/workwithcrow12-art/cost-aware-gitops-platform/releases).
 
 The engineering work in this project is the platform, delivery automation, FinOps tooling and integration tests. The storefront and its microservices originate from Google's Apache-2.0-licensed [Online Boutique](https://github.com/GoogleCloudPlatform/microservices-demo).
 

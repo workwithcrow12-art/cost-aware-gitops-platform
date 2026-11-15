@@ -52,6 +52,20 @@ jobs:
             --label "org.opencontainers.image.revision=$REVISION" "$context"
           echo "ref=$ref" >> "$GITHUB_OUTPUT"
           echo "id=$(docker image inspect --format '{{.Id}}' "$ref")" >> "$GITHUB_OUTPUT"
+      - name: Check Python services in the runtime image
+        env:
+          SERVICE: ${{ matrix.service }}
+          IMAGE: ${{ steps.image.outputs.ref }}
+        run: |
+          set -euo pipefail
+          case "$SERVICE" in
+            emailservice|recommendationservice)
+              docker run --rm --network none --entrypoint python "$IMAGE" -m unittest discover -v
+              ;;
+            loadgenerator)
+              docker run --rm --network none --entrypoint locust "$IMAGE" --version
+              ;;
+          esac
       - name: Scan the local service image
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         env:

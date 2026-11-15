@@ -43,6 +43,10 @@ WORKDIR /loadgen
 
 COPY --from=builder /install /usr/local
 
+# Package installers and their vendored dependencies are not needed at runtime.
+RUN python -m pip uninstall -y pip \
+    && rm -rf /usr/local/lib/python3.14/ensurepip
+
 # Add application code.
 COPY locustfile.py .
 

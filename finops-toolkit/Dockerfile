@@ -4,6 +4,9 @@ WORKDIR /app
 COPY pyproject.toml README.md ./
 COPY src ./src
 RUN python -m pip install --no-cache-dir '.[aws]'
+# Package installers and their vendored dependencies are not needed at runtime.
+RUN python -m pip uninstall -y pip \
+    && rm -rf /usr/local/lib/python3.14/ensurepip
 
 USER 10001:10001
 ENTRYPOINT ["finops"]
