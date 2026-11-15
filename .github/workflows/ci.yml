@@ -22,7 +22,7 @@ jobs:
   gitops:
     uses: ./.github/workflows/gitops.yml
   images:
-    needs: [finops, services, terraform, gitops]
+    needs: services
     uses: ./.github/workflows/images.yml
     with:
       revision: ${{ github.sha }}
