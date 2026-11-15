@@ -4,7 +4,7 @@ A DevOps and FinOps portfolio lab that combines infrastructure as code, GitOps d
 
 **AWS EKS is the primary deployment path.** Optional Terraform roots support nonproduction GKE and AKS labs. Local tests and deployment configuration are available; live cloud deployment, recovery and measured cost savings still require a separate lab exercise.
 
-[Architecture](.github/docs/architecture/overview.md) · [Verification and demo](.github/docs/case-study.md) · [v0.9 release notes](.github/docs/releases/v0.9.md) · [GitHub Actions](https://github.com/workwithcrow12-art/cost-aware-gitops-platform/actions) · [Apache-2.0](LICENSE)
+[Architecture](.github/docs/architecture/overview.md) · [Verification and demo](.github/docs/case-study.md) · [v0.9 release notes](.github/docs/releases/v0.9.md) · [GitHub Actions](https://github.com/workwithcrow12-art/cost-aware-gitops-platform/actions) · [MIT License](LICENSE)
 
 ## Project overview
 
@@ -113,8 +113,8 @@ Athena provisioning, Kyverno tests, a baseline Grafana dashboard, persistent pro
 - [Contributing](.github/CONTRIBUTING.md) and [security reporting](.github/SECURITY.md)
 - [Published releases](https://github.com/workwithcrow12-art/cost-aware-gitops-platform/releases)
 
-## License and attribution
+## License
 
-This project is licensed under the **Apache License 2.0**. See [LICENSE](LICENSE) for the full text.
+The original platform, delivery automation, FinOps tooling and documentation in this project are available under the MIT License. Copyright (c) 2026 Dũng Nguyễn. [MIT License](LICENSE)
 
-The application in `boutique-app` derives from [Google Online Boutique / microservices-demo](https://github.com/GoogleCloudPlatform/microservices-demo), also licensed under Apache-2.0. Its [upstream license](boutique-app/LICENSE) and source copyright notices are retained. Third-party libraries, images and tools remain subject to their respective licenses.
+The application in `boutique-app` derives from [Google Online Boutique / microservices-demo](https://github.com/GoogleCloudPlatform/microservices-demo) and retains its [Apache License 2.0](boutique-app/LICENSE) and source copyright notices. The MIT License does not replace those terms. Third-party libraries, images and tools retain their own licenses.
