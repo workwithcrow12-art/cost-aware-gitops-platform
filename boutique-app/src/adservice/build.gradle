@@ -33,7 +33,7 @@ dependencies {
     if (speed) {
         implementation fileTree(dir: offlineCompile, include: '*.jar')
     } else {
-        implementation platform('io.netty:netty-bom:4.2.17.Final')
+        implementation platform('io.netty:netty-bom:4.2.21.Final')
         constraints {
             implementation 'com.google.guava:guava:33.7.2-jre'
         }
