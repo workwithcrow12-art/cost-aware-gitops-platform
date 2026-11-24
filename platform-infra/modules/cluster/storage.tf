@@ -1,6 +1,8 @@
 resource "aws_iam_role" "ebs_csi" {
   count = var.enable_ebs_csi ? 1 : 0
   name  = "${var.name}-ebs-csi"
+  tags  = { "eks-cluster-name" = var.name }
+
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
@@ -20,7 +22,7 @@ resource "aws_iam_role" "ebs_csi" {
 resource "aws_iam_role_policy_attachment" "ebs_csi" {
   count      = var.enable_ebs_csi ? 1 : 0
   role       = aws_iam_role.ebs_csi[0].name
-  policy_arn = "arn:${data.aws_partition.current.partition}:iam::aws:policy/AmazonEBSCSIDriverPolicyV2"
+  policy_arn = "arn:${data.aws_partition.current.partition}:iam::aws:policy/AmazonEBSCSIDriverEKSClusterScopedPolicy"
 }
 
 data "aws_eks_addon_version" "ebs_csi" {
@@ -37,5 +39,6 @@ resource "aws_eks_addon" "ebs_csi" {
   addon_version               = data.aws_eks_addon_version.ebs_csi[0].version
   service_account_role_arn    = aws_iam_role.ebs_csi[0].arn
   resolve_conflicts_on_update = "PRESERVE"
+  configuration_values        = jsonencode({ controller = { k8sTagClusterId = var.name } })
   depends_on                  = [aws_iam_role_policy_attachment.ebs_csi, aws_eks_node_group.system]
 }

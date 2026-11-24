@@ -44,6 +44,12 @@ spec:
           readinessProbe:
             grpc:
               port: 9555
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
 ---
 apiVersion: v1
 kind: Service

@@ -19,8 +19,15 @@ resource "google_compute_subnetwork" "this" {
   name                     = var.name
   region                   = var.region
   network                  = google_compute_network.this.id
-  ip_cidr_range            = "10.40.0.0/20"
+  ip_cidr_range            = var.subnet_cidr
   private_ip_google_access = true
+
+  log_config {
+    aggregation_interval = "INTERVAL_5_SEC"
+    flow_sampling        = 0.5
+    metadata             = "INCLUDE_ALL_METADATA"
+  }
+
   secondary_ip_range {
     range_name    = "pods"
     ip_cidr_range = "10.44.0.0/16"
@@ -125,7 +132,7 @@ resource "google_container_node_pool" "system" {
   name       = "system"
   cluster    = google_container_cluster.this.name
   location   = var.zone
-  node_count = 2
+  node_count = var.node_count
   management {
     auto_repair  = true
     auto_upgrade = true

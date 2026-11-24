@@ -4,8 +4,9 @@ This is the evidence for the CV portfolio version. See [portfolio notes](portfol
 
 ## Run the local checks
 
-Clone the four component repositories side by side. From that parent directory, run the following in Bash.
-The FinOps commands use fixtures and require Python 3.11 or later. The Kubernetes check requires Kustomize.
+Clone the monorepo, then run `python scripts/portfolio_demo.py` from its root with Python 3.11 or later. It runs the offline tests and all three fixture reports, retaining their output in a new directory. See the [five-minute demo](demo.md) and [2026-11-16 evidence](evidence/portfolio-readiness-2026-11-16.md).
+
+For individual checks, run the following from the monorepo root in Bash. The Kubernetes check additionally requires Kustomize.
 
 ```bash
 for env in dev staging prod preview; do
@@ -28,9 +29,9 @@ These are synthetic fixtures. OpenCost allocation can overlap with AWS billing, 
 two sources separately. Waste estimates use fixture rates and represent opportunities for review.
 The [generated weekly report](evidence/weekly-report.md) and [waste summary](evidence/waste-report.md) can be read without installing anything. PowerShell commands are in the workspace README.
 
-## Local verification on 2026-11-12
+## Historical local verification on 2026-11-12
 
-Checks ran on Windows with cached tools and dependencies. Some test processes required local socket access outside the execution sandbox. Windows Application Control blocked specific compiled test binaries; those results are reported separately below. Hosted GitHub Actions was not run.
+The following table is a historical record, not a rerun of the current revision. Counts reflect that earlier version. Checks ran on Windows with cached tools and dependencies. Some test processes required local socket access outside the execution sandbox. Windows Application Control blocked specific compiled test binaries; those results are reported separately below. Hosted GitHub Actions was not run.
 
 | Check | Result |
 |---|---|
@@ -54,7 +55,7 @@ Checks ran on Windows with cached tools and dependencies. Some test processes re
 
 Docker is unavailable on the verification host, so container builds and current image vulnerability scans were not executed locally. The workflows define those checks for Linux runners. The AWS deployment, registry publishing, controller reconciliation, deployed checkout smoke and measured rollout behavior require a lab run.
 The infrastructure uses fixed managed node group counts. CUR and Glue setup use existing AWS billing data.
-Karpenter, Goldilocks, custom Grafana dashboards and Cost Anomaly Detection are follow-up extensions.
+Karpenter, Goldilocks and Cost Anomaly Detection remain follow-up extensions. A baseline custom Grafana dashboard now exists in `gitops-config/platform/monitoring/dashboards`, and the production Prometheus profile has persistent storage.
 
 ## Fixes included in the portfolio version
 
@@ -64,16 +65,16 @@ Karpenter, Goldilocks, custom Grafana dashboards and Cost Anomaly Detection are 
 - The downscaler can read the two nonprod Namespace schedules through a narrow ClusterRole. The nonprod bootstrap uses a local manifest path compatible with Kustomize's default load restrictions.
 - The storefront smoke command rejects missing confirmation IDs, and runbooks record checkout evidence after deployment and rollback.
 
-Independent review found no remaining actionable issue in the portfolio claims or Python/CI changes. Review and local checks do not replace the separate live lab exercise below.
+The historical review and checks do not establish the current CI result or replace the separate live lab exercise below. Current monorepo promotion and cloud verification limits are recorded in the portfolio notes.
 
 ## Reproduce the checks
 
-Run commands from the named repository after installing its documented dependencies. Use Linux for the complete Go/.NET/container checks where this host was blocked.
+Run commands from the named component directory after installing its documented dependencies. Use Linux for the complete Go/.NET/container checks where this host was blocked.
 
-| Repository | Commands |
+| Component directory | Commands |
 |---|---|
 | `platform-infra` | `make validate`; `conftest verify --policy policies` |
-| `gitops-config` | Follow the local validation section of its README and `.github/workflows/validate.yml` |
+| `gitops-config` | Follow the local validation section of its README and root `.github/workflows/gitops.yml` |
 | `finops-toolkit` | `python -m pip install '.[dev,custodian]'`; `make lint test run`; `custodian validate custodian/policies/*.yml` |
 | `boutique-app` Node | `npm ci --ignore-scripts` and `npm test` in each of `src/paymentservice` and `src/currencyservice` |
 | `boutique-app` Python | Install each service's `requirements.txt`, then run `python -m unittest discover -v` in `src/emailservice` and `src/recommendationservice` |
@@ -86,7 +87,7 @@ The local checkout tests do not prove that Kubernetes service discovery, network
 
 ## Run an AWS lab
 
-1. Follow the [rebuild runbook](runbooks/khoi-phuc-cluster-tu-git.md) for nonprod.
+1. Complete the [AWS prerequisites and evidence checklist](runbooks/aws-lab-evidence.md), then follow the [rebuild runbook](runbooks/khoi-phuc-cluster-tu-git.md) for nonprod. The current zero-cost request has not been verified against an authenticated AWS account; no cloud resources were created.
 2. Promote a known-good image set and record the merge and healthy rollout timestamps.
 3. In dev, promote a frontend candidate whose HTTP probe fails. Record the analysis status and verify that
    the stable revision still serves traffic. Restore desired state with the [rollback runbook](runbooks/rollback-thu-cong.md).

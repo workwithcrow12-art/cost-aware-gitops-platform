@@ -42,10 +42,12 @@ run "managed_catalog_and_reporter" {
       aws_s3_bucket_public_access_block.results[0].block_public_policy &&
       aws_s3_bucket_server_side_encryption_configuration.results[0].rule != null &&
       aws_glue_catalog_table.cur[0].storage_descriptor[0].location == "s3://billing-data/cur/parquet/" &&
+      length(aws_glue_catalog_table.cur[0].partition_keys) == 2 &&
+      aws_glue_catalog_table.cur[0].parameters["projection.enabled"] == "true" &&
       output.reporter_environment.ATHENA_TABLE == "cur" &&
       output.reporter_environment.ATHENA_DATABASE == "finops"
     )
-    error_message = "Reporting must provision a private encrypted results bucket, CUR catalog and runtime configuration."
+    error_message = "Reporting must provision a private encrypted results bucket, partitioned CUR catalog and runtime configuration."
   }
 
   assert {

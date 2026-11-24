@@ -13,4 +13,4 @@ spec:
   targets:
     staticConfig:
       static:
-        - http://frontend-canary.boutique-dev.svc.cluster.local:8080/
+        - http://frontend-canary.NAMESPACE_PLACEHOLDER.svc.cluster.local:8080/

@@ -81,7 +81,7 @@ public final class AdService {
     }
   }
 
-  private static class AdServiceImpl extends hipstershop.AdServiceGrpc.AdServiceImplBase {
+  static class AdServiceImpl extends hipstershop.AdServiceGrpc.AdServiceImplBase {
 
     /**
      * Retrieves ads based on context provided in the request {@code AdRequest}.
@@ -120,13 +120,13 @@ public final class AdService {
 
   private static final ImmutableListMultimap<String, Ad> adsMap = createAdsMap();
 
-  private Collection<Ad> getAdsByCategory(String category) {
+  Collection<Ad> getAdsByCategory(String category) {
     return adsMap.get(category);
   }
 
   private static final Random random = new Random();
 
-  private List<Ad> getRandomAds() {
+  List<Ad> getRandomAds() {
     List<Ad> ads = new ArrayList<>(MAX_ADS_TO_SERVE);
     Collection<Ad> allAds = adsMap.values();
     for (int i = 0; i < MAX_ADS_TO_SERVE; i++) {
@@ -135,7 +135,7 @@ public final class AdService {
     return ads;
   }
 
-  private static AdService getInstance() {
+  static AdService getInstance() {
     return service;
   }
 

@@ -1,3 +1,27 @@
+locals {
+  cur_columns = [
+    { name = "identity_line_item_id", type = "string" },
+    { name = "bill_billing_period_start_date", type = "timestamp" },
+    { name = "bill_billing_period_end_date", type = "timestamp" },
+    { name = "line_item_usage_account_id", type = "string" },
+    { name = "line_item_line_item_type", type = "string" },
+    { name = "line_item_usage_start_date", type = "timestamp" },
+    { name = "line_item_usage_end_date", type = "timestamp" },
+    { name = "line_item_product_code", type = "string" },
+    { name = "line_item_usage_type", type = "string" },
+    { name = "line_item_operation", type = "string" },
+    { name = "line_item_resource_id", type = "string" },
+    { name = "line_item_unblended_cost", type = "double" },
+    { name = "line_item_blended_cost", type = "double" },
+    { name = "pricing_public_on_demand_cost", type = "double" },
+    { name = "product_region", type = "string" },
+    { name = "resource_tags_user_env", type = "string" },
+    { name = "resource_tags_user_team", type = "string" },
+    { name = "resource_tags_user_project", type = "string" },
+    { name = "resource_tags_user_owner", type = "string" },
+  ]
+}
+
 resource "aws_s3_bucket" "results" {
   count         = var.results_s3 == null ? 1 : 0
   bucket_prefix = "finops-athena-"
@@ -18,6 +42,19 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "results" {
   rule {
     apply_server_side_encryption_by_default {
       sse_algorithm = "AES256"
+    }
+  }
+}
+
+resource "aws_s3_bucket_lifecycle_configuration" "results" {
+  count  = var.results_s3 == null ? 1 : 0
+  bucket = aws_s3_bucket.results[0].id
+  rule {
+    id     = "expire-transient-query-results"
+    status = "Enabled"
+    filter {}
+    expiration {
+      days = 30
     }
   }
 }
@@ -47,7 +84,26 @@ resource "aws_glue_catalog_table" "cur" {
   name          = var.cur_catalog.table_name
   database_name = aws_glue_catalog_database.cur[0].name
   table_type    = "EXTERNAL_TABLE"
-  parameters    = { classification = "parquet", EXTERNAL = "TRUE" }
+
+  parameters = merge(
+    { classification = "parquet", EXTERNAL = "TRUE" },
+    var.cur_catalog.partitioned ? {
+      "projection.enabled"        = "true"
+      "projection.year.type"      = "integer"
+      "projection.year.range"     = var.cur_catalog.projection_years
+      "projection.month.type"     = "integer"
+      "projection.month.range"    = "1,12"
+      "storage.location.template" = "${var.cur_catalog.data_s3}year=$${year}/month=$${month}/"
+    } : {}
+  )
+
+  dynamic "partition_keys" {
+    for_each = var.cur_catalog.partitioned ? ["year", "month"] : []
+    content {
+      name = partition_keys.value
+      type = "string"
+    }
+  }
 
   storage_descriptor {
     location      = var.cur_catalog.data_s3
@@ -58,25 +114,12 @@ resource "aws_glue_catalog_table" "cur" {
       serialization_library = "org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe"
     }
 
-    columns {
-      name = "line_item_usage_start_date"
-      type = "timestamp"
-    }
-    columns {
-      name = "line_item_product_code"
-      type = "string"
-    }
-    columns {
-      name = "line_item_unblended_cost"
-      type = "double"
-    }
-    columns {
-      name = "resource_tags_user_env"
-      type = "string"
-    }
-    columns {
-      name = "resource_tags_user_team"
-      type = "string"
+    dynamic "columns" {
+      for_each = local.cur_columns
+      content {
+        name = columns.value.name
+        type = columns.value.type
+      }
     }
   }
 }

@@ -4,6 +4,7 @@ policies:
     description: Find application load balancers with zero requests over the last 14 days.
     filters:
       - Type: application
+      - "tag:finops:ignore": absent
       - type: value
         key: CreatedTime
         value_type: age
@@ -13,6 +14,7 @@ policies:
         name: RequestCount
         statistics: Sum
         days: 14
+        period: 86400
         value: 0
         missing-value: 0
         op: equal

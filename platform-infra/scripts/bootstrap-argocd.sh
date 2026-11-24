@@ -2,14 +2,24 @@
 set -euo pipefail
 
 environment=${1:-}
-profile=${4:-standard}
+if [[ "$environment" == aks || "$environment" == gke ]]; then
+  default_profile=managed
+else
+  default_profile=standard
+fi
+profile=${4:-$default_profile}
+
 case "$profile:$environment" in
-  standard:nonprod|standard:prod|managed:nonprod) ;;
-  *) printf 'Usage: %s nonprod|prod [gitops-checkout] [kube-context] [standard|managed (nonprod only)]\n' "$0" >&2; exit 2 ;;
+  standard:nonprod|standard:prod|managed:nonprod|managed:aks|managed:gke) ;;
+  *) printf 'Usage: %s nonprod|prod|aks|gke [gitops-checkout] [kube-context] [standard|managed (nonprod/aks/gke only)]\n' "$0" >&2; exit 2 ;;
 esac
-root_path="gitops-config/bootstrap/$environment"
-if [[ "$profile" == managed ]]; then
-  root_path="$root_path-managed"
+
+if [[ "$environment" == prod ]]; then
+  root_path="gitops-config/bootstrap/prod"
+elif [[ "$profile" == managed ]]; then
+  root_path="gitops-config/bootstrap/nonprod-managed"
+else
+  root_path="gitops-config/bootstrap/nonprod"
 fi
 
 scripts_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)

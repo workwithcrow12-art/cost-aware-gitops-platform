@@ -48,7 +48,7 @@ RUN python -m pip uninstall -y pip \
     && rm -rf /usr/local/lib/python3.14/ensurepip
 
 # Add application code.
-COPY locustfile.py .
+COPY locustfile.py test_locustfile.py ./
 
 # enable gevent support in debugger
 ENV GEVENT_SUPPORT=True

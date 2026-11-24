@@ -16,6 +16,8 @@ spec:
       validate:
         failureAction: Enforce
         message: Containers must declare CPU and memory requests and limits.
+        # Kubernetes API validation forbids resources on ephemeralContainers;
+        # require-image-digest and require-restricted-pods still evaluate them.
         foreach:
           - list: "request.object.spec.[initContainers, containers][]"
             pattern:

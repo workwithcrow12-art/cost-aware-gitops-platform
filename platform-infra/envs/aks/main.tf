@@ -14,7 +14,7 @@ resource "azurerm_virtual_network" "this" {
   name                = var.name
   location            = var.location
   resource_group_name = azurerm_resource_group.this.name
-  address_space       = ["10.60.0.0/16"]
+  address_space       = [var.vnet_cidr]
   tags                = var.cost_tags
 }
 
@@ -22,7 +22,7 @@ resource "azurerm_subnet" "nodes" {
   name                 = "nodes"
   resource_group_name  = azurerm_resource_group.this.name
   virtual_network_name = azurerm_virtual_network.this.name
-  address_prefixes     = ["10.60.0.0/20"]
+  address_prefixes     = [var.subnet_cidr]
 }
 
 resource "azurerm_user_assigned_identity" "cluster" {
@@ -55,7 +55,7 @@ resource "azurerm_kubernetes_cluster" "this" {
   default_node_pool {
     name                        = "system"
     temporary_name_for_rotation = "systemtemp"
-    node_count                  = 2
+    node_count                  = var.node_count
     vm_size                     = "Standard_D4s_v5"
     os_disk_size_gb             = 30
     vnet_subnet_id              = azurerm_subnet.nodes.id

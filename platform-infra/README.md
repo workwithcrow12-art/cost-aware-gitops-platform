@@ -9,11 +9,11 @@ Optional nonprod roots in `envs/gke` and `envs/aks` provision private GKE/AKS la
 | `nonprod` | Two availability zones, one shared NAT gateway | Two Spot nodes for dev, staging and optional previews |
 | `prod` | Three availability zones, one NAT gateway per zone | Three On-Demand nodes for production |
 
-Both environments use private worker subnets and private-only Kubernetes API endpoints. VPC Flow Logs capture accepted and rejected traffic in CloudWatch. The state bootstrap creates a versioned S3 bucket with an HTTPS-only policy, an account-wide AWS Budget and, when configured, GitHub OIDC roles and an Athena workgroup.
+Both environments use private worker subnets, free S3 Gateway VPC endpoints (with optional ECR/STS/Logs interface endpoints), KMS-encrypted Kubernetes Secrets and CloudWatch Logs, encrypted worker gp3 root volumes, and private-only Kubernetes API endpoints. VPC Flow Logs capture accepted and rejected traffic in CloudWatch. The state bootstrap creates a versioned S3 bucket with an HTTPS-only policy, an account-wide AWS Budget and, when configured, GitHub OIDC roles and an Athena workgroup; environment roots also expose optional environment-filtered Budgets, Athena/CUR reporting, GitHub OIDC, and Karpenter modules.
 
 ## Validate locally
 
-Run from this repository in a Bash-compatible shell with GNU Make and Terraform. Validation uses the locked AWS, Google and Azure providers, disables remote backends and runs mocked Terraform tests for every root and the reporting module. It needs provider downloads but no cloud credentials.
+Run from the monorepo's `platform-infra` directory in a Bash-compatible shell with GNU Make and Terraform. Validation uses the locked AWS, Google and Azure providers, disables remote backends and runs mocked Terraform tests for every root and the reporting module. It needs provider downloads but no cloud credentials.
 
 ```bash
 make validate
@@ -46,7 +46,7 @@ bash scripts/bootstrap-argocd.sh nonprod ../gitops-config
 
 The bootstrap prompts for a globally unique bucket name, the budget amount in USD and a notification email. Keep the bootstrap's local state in a protected location. The environment roots use S3 lockfiles and default to `ap-southeast-1`. Set `TF_VAR_aws_region` to choose another region.
 
-The operator host must be able to resolve and route to the private endpoint. Use a host inside the VPC, for example an EC2 instance managed through Systems Manager, or a privately connected network with working DNS resolution and return routes. The cluster security group grants TCP 443 to `operator_access_cidrs`, so supply the host's private CIDR or the connected source range. The Terraform GitHub jobs use AWS service APIs and can run on hosted runners. The Helm and kubectl bootstrap requires the private path.
+The operator host must be able to resolve and route to the private endpoint. Use a host inside the VPC, for example an EC2 instance managed through Systems Manager, or a privately connected network with working DNS resolution and return routes. The cluster security group grants TCP 443 to `operator_access_cidrs`, so supply the host's private CIDR or the connected source range. The active Terraform CI uses mocked providers and does not need AWS access. If the standalone apply/drift examples are adapted, their AWS service API calls can run on hosted runners. The Helm and kubectl bootstrap requires the private path.
 
 The GitOps checkout must contain the bootstrap project, root app and Helm values from the revision Argo CD will fetch. Update repository URLs and revisions in your GitOps checkout and push them before bootstrapping a fork. The script chooses `bootstrap/nonprod` or `bootstrap/prod` and uses the EKS cluster ARN as the kubeconfig context.
 
@@ -64,13 +64,19 @@ Use the same AWS account, state bucket and Terraform inputs as the deployment. C
 
 ## GitHub Actions
 
+The active monorepo check is root `.github/workflows/terraform.yml`, called by `ci.yml`. It runs formatting, validation, mock tests, TFLint, bootstrap tests and cost-tag policies. It does not provision resources or schedule drift detection. Use the local plan/apply commands above for a lab.
+
+### Standalone workflow examples
+
+The files in `platform-infra/.github/workflows` are retained examples. They do not run in this monorepo, and setting their variables alone does not enable them. The settings below apply only if those workflows are deliberately adapted into active root workflows, including their working directories and workflow-bound OIDC trust.
+
 | Workflow | What it does |
 |---|---|
 | `terraform-pr.yml` | Runs Terraform formatting, TFLint, validation, mocked plans and cost-tag policy tests. It uses a read-only GitHub token. |
 | `terraform-apply.yml` | Creates a policy-checked plan on `main`, retains it for review, then applies that exact plan after the environment approval. |
 | `drift-detection.yml` | Runs read-only refresh plans, fails on drift, and retains a seven-day summary of changed resource addresses/actions without state values. |
 
-To enable the AWS jobs, configure GitHub's immutable OIDC subject template and pass the repository names, IDs and IAM permission policy ARNs to the state bootstrap. See the [OIDC module](modules/iam-github-oidc/README.md) for the template and permission requirements. The AWS role trust binds each job to its workflow file on `main`.
+For an adapted standalone workflow, configure GitHub's immutable OIDC subject template and pass the repository names, IDs and IAM permission policy ARNs to the state bootstrap. See the [OIDC module](modules/iam-github-oidc/README.md) for the template and permission requirements. The AWS role trust binds each job to its workflow file on `main`.
 
 Set these GitHub repository variables:
 
@@ -101,10 +107,11 @@ plans older than 24 hours. Terraform also rejects plans made against stale state
 After expiry or state changes, dispatch and review a new run. Never apply a new
 unreviewed plan as a fallback. Run `make lint` locally with TFLint 0.61.0.
 
-Production enables the EBS CSI managed add-on with a dedicated ServiceAccount-
-bound IRSA role and AWS's `AmazonEBSCSIDriverPolicyV2`. GitOps supplies the encrypted
-gp3 StorageClass and persistent Prometheus claim. Add the CSI role to the apply
-role's reviewed `iam:PassRole` permissions. Nonprod leaves the add-on disabled.
+Both `nonprod` and `prod` enable the EBS CSI managed add-on by default with a
+dedicated ServiceAccount-bound IRSA role (`eks-cluster-name` principal tag,
+`k8sTagClusterId`, and AWS's `AmazonEBSCSIDriverEKSClusterScopedPolicy`). GitOps
+supplies the encrypted gp3 StorageClass and persistent Prometheus claim in `prod`.
+Add the CSI role to the apply role's reviewed `iam:PassRole` permissions.
 
 ## FinOps data
 
@@ -118,4 +125,4 @@ infracost breakdown --config-file infracost.yml
 
 For optional AWS spend reporting, set `athena_cur_catalog` on the shared bootstrap to create a Glue database/table over an existing legacy CUR Parquet prefix and a private encrypted query-results bucket. Add `athena_reporter` to provision a scoped IRSA role for the reporting CronJob. Existing callers can keep `athena_results_s3` for workgroup-only provisioning. All modes enforce a 5 GiB per-query scan cap. See the [reporting module](modules/cost-reporting/README.md) for inputs, schema requirements and runtime outputs.
 
-The managed node groups have fixed Terraform node counts. Karpenter and AWS Cost Anomaly Detection are future extensions.
+The managed node groups use fixed Terraform node counts by default; `modules/karpenter` provides opt-in Karpenter IAM and interruption infrastructure (`enable_karpenter = true`), while AWS Cost Anomaly Detection remains a future extension.

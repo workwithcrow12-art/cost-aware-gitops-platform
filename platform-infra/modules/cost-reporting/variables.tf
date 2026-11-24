@@ -15,11 +15,13 @@ variable "results_s3" {
 }
 
 variable "cur_catalog" {
-  description = "Optional catalog for an existing legacy CUR Parquet data prefix (not manifests or CSV)."
+  description = "Optional catalog for an existing legacy CUR Parquet data prefix (partitioned by year/month with Athena partition projection by default)."
   type = object({
-    database_name = string
-    table_name    = string
-    data_s3       = string
+    database_name    = string
+    table_name       = string
+    data_s3          = string
+    partitioned      = optional(bool, true)
+    projection_years = optional(string, "2024,2030")
   })
   default = null
 
@@ -27,9 +29,10 @@ variable "cur_catalog" {
     condition = var.cur_catalog == null ? true : (
       can(regex("^[a-z_][a-z0-9_]*$", var.cur_catalog.database_name)) &&
       can(regex("^[a-z_][a-z0-9_]*$", var.cur_catalog.table_name)) &&
-      can(regex("^s3://[^/]+/.+/$", var.cur_catalog.data_s3))
+      can(regex("^s3://[^/]+/.+/$", var.cur_catalog.data_s3)) &&
+      can(regex("^[0-9]{4},[0-9]{4}$", var.cur_catalog.projection_years))
     )
-    error_message = "Use lowercase SQL identifiers and a CUR Parquet S3 prefix ending in /."
+    error_message = "Use lowercase SQL identifiers, a CUR Parquet S3 prefix ending in /, and a YYYY,YYYY projection range."
   }
 }
 

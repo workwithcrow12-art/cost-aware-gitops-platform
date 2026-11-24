@@ -12,14 +12,16 @@ jobs:
       run:
         working-directory: gitops-config
     steps:
-      - uses: actions/checkout@v4
-      - uses: azure/setup-kubectl@v4
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - uses: azure/setup-kubectl@776406bce94f63e41d621b960d78ee25c8b76ede # v4.0.1
         with:
           version: v1.35.2
       - name: Install validation tools
         shell: bash
         run: |
-          mkdir -p "${RUNNER_TEMP}/gitops-tools"
+          mkdir -p "${RUNNER_TEMP}/gitops-tools" "${RUNNER_TEMP}/kubeconform-cache"
           curl --fail --silent --show-error --location --retry 3 \
             https://github.com/yannh/kubeconform/releases/download/v0.7.0/kubeconform-linux-amd64.tar.gz \
             | tar -xz -C "${RUNNER_TEMP}/gitops-tools" kubeconform
@@ -30,10 +32,18 @@ jobs:
       - name: Render and validate manifests
         shell: bash
         run: |
+          crd_schema='https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json'
+          kubeconform -strict -cache "${RUNNER_TEMP}/kubeconform-cache" \
+            -schema-location default -schema-location "$crd_schema" \
+            -summary -kubernetes-version 1.35.0 bootstrap/root-app.yaml
           for path in apps/boutique/overlays/{dev,staging,prod,preview} \
-                      bootstrap/{nonprod,nonprod-managed,prod} platform/{kyverno/policies,monitoring/alerts,monitoring/notifications,finops-reporter,kube-downscaler,storage}; do
+                      bootstrap/{nonprod,nonprod-managed,prod} \
+                      platform/{kyverno/policies,monitoring/alerts,monitoring/notifications,finops-reporter,kube-downscaler,storage}; do
             echo "Validating $path"
-            kubectl kustomize "$path" | kubeconform -strict -ignore-missing-schemas -summary -kubernetes-version 1.35.0
+            kubectl kustomize "$path" | kubeconform -strict \
+              -cache "${RUNNER_TEMP}/kubeconform-cache" \
+              -schema-location default -schema-location "$crd_schema" \
+              -summary -kubernetes-version 1.35.0
           done
       - name: Test Kyverno guardrails
         run: kyverno test platform/kyverno/tests
@@ -43,6 +53,7 @@ jobs:
       - name: Render monitoring profiles
         shell: bash
         run: |
+          crd_schema='https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json'
           for profile in nonprod prod; do
             values=(-f platform/monitoring/values.yaml)
             if [[ "$profile" == prod ]]; then
@@ -51,9 +62,12 @@ jobs:
             helm template monitoring kube-prometheus-stack \
               --repo https://prometheus-community.github.io/helm-charts --version 92.7.0 \
               --namespace monitoring "${values[@]}" \
-              | kubeconform -strict -ignore-missing-schemas -summary -kubernetes-version 1.35.0
+              | kubeconform -strict -ignore-missing-schemas \
+                -cache "${RUNNER_TEMP}/kubeconform-cache" \
+                -schema-location default -schema-location "$crd_schema" \
+                -summary -kubernetes-version 1.35.0
           done
-      - name: Enforce pod restrictions on rendered workloads
+      - name: Enforce Kyverno policies on rendered workloads
         shell: bash
         run: |
           for target in dev staging prod preview; do
@@ -61,12 +75,16 @@ jobs:
               | kubectl label --local -f - -o json validation=true \
               | jq -rs '[.[] | select(.kind == "Deployment" or .kind == "Rollout")
                   | {apiVersion: "v1", kind: "Pod",
-                     metadata: {name: .metadata.name, namespace: .metadata.namespace},
+                     metadata: {
+                       name: .metadata.name,
+                       namespace: .metadata.namespace,
+                       labels: (.spec.template.metadata.labels // {})
+                     },
                      spec: .spec.template.spec}]
                   | if length == 0 then error("no workload pods found")
                     else .[] | "---\n" + tojson end' \
               > "$RUNNER_TEMP/pods-$target.yaml"
-            kyverno apply platform/kyverno/policies/require-restricted-pods.yaml \
+            kyverno apply platform/kyverno/policies \
               --resource "$RUNNER_TEMP/pods-$target.yaml"
           done
       - name: Scan deployed Redis digests

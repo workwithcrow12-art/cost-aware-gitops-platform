@@ -6,6 +6,11 @@ variable "name" {
 variable "vpc_cidr" {
   description = "IPv4 CIDR for the VPC."
   type        = string
+
+  validation {
+    condition     = can(cidrnetmask(var.vpc_cidr)) && !endswith(var.vpc_cidr, "/0")
+    error_message = "Provide a valid non-/0 IPv4 CIDR block for the VPC."
+  }
 }
 
 variable "az_count" {
@@ -21,4 +26,16 @@ variable "az_count" {
 variable "nat_per_az" {
   description = "Create one NAT gateway per availability zone instead of sharing one."
   type        = bool
+}
+
+variable "enable_s3_endpoint" {
+  description = "Provision a zero-cost S3 Gateway VPC endpoint on private route tables."
+  type        = bool
+  default     = true
+}
+
+variable "enable_interface_endpoints" {
+  description = "Provision private interface VPC endpoints for ECR, STS, and CloudWatch Logs."
+  type        = bool
+  default     = false
 }

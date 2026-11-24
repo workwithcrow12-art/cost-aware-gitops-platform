@@ -24,7 +24,9 @@ spec:
               - templateName: frontend-canary
             args:
               - name: namespace
-                value: boutique-dev
+                valueFrom:
+                  fieldRef:
+                    fieldPath: metadata.namespace
         - setWeight: 50
         - pause:
             duration: 60s
@@ -33,7 +35,9 @@ spec:
               - templateName: frontend-canary
             args:
               - name: namespace
-                value: boutique-dev
+                valueFrom:
+                  fieldRef:
+                    fieldPath: metadata.namespace
         - setWeight: 100
   selector:
     matchLabels:

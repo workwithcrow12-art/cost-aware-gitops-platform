@@ -1,0 +1,10 @@
+test_failed_command_stops_the_demo_and_records_its_exit_code (test_portfolio_demo.PortfolioDemoTests.test_failed_command_stops_the_demo_and_records_its_exit_code) ... ok
+test_offline_demo_runs_from_another_directory_and_saves_evidence (test_portfolio_demo.PortfolioDemoTests.test_offline_demo_runs_from_another_directory_and_saves_evidence) ... ok
+test_timeout_retains_partial_command_output (test_portfolio_demo.PortfolioDemoTests.test_timeout_retains_partial_command_output) ... ok
+
+----------------------------------------------------------------------
+Ran 3 tests in 5.288s
+
+OK
+FAIL (exit 7): failure.log
+FAIL (exit 1): timeout.log

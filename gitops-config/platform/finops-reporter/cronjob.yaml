@@ -16,8 +16,16 @@ spec:
         spec:
           restartPolicy: Never
           serviceAccountName: finops-reporter
+          automountServiceAccountToken: false
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 10001
+            runAsGroup: 10001
+            seccompProfile:
+              type: RuntimeDefault
           containers:
             - name: reporter
+              # Replace :v0.9 with the immutable @sha256 digest emitted by release.yml after publishing.
               image: ghcr.io/workwithcrow12-art/finops-toolkit:v0.9
               args:
                 - report
@@ -28,6 +36,12 @@ spec:
                 - secretRef:
                     name: finops-reporter
                     optional: true
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop:
+                    - ALL
               resources:
                 requests:
                   cpu: 50m

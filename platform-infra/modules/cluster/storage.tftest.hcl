@@ -1,9 +1,19 @@
 mock_provider "aws" {
+  mock_data "aws_caller_identity" {
+    defaults = { account_id = "123456789012" }
+  }
   mock_data "aws_partition" {
     defaults = { partition = "aws" }
   }
+  mock_data "aws_region" {
+    defaults = { region = "ap-southeast-1" }
+  }
   mock_data "aws_eks_addon_version" {
     defaults = { version = "v1.21.0-eksbuild.1" }
+  }
+  mock_resource "aws_kms_key" {
+    override_during = plan
+    defaults        = { arn = "arn:aws:kms:ap-southeast-1:123456789012:key/test-cluster-key" }
   }
   mock_resource "aws_eks_cluster" {
     override_during = plan
@@ -32,15 +42,27 @@ variables {
   cost_tags             = { team = "platform", env = "prod", project = "test", owner = "platform" }
 }
 
-run "storage_disabled_by_default" {
+run "private_cluster_imdsv2_and_storage_disabled_by_default" {
   command = plan
   assert {
-    condition     = length(aws_eks_addon.ebs_csi) == 0 && length(aws_iam_role.ebs_csi) == 0
-    error_message = "Nonprod must not acquire an unused CSI driver or role."
+    condition = (
+      length(aws_eks_addon.ebs_csi) == 0 &&
+      length(aws_iam_role.ebs_csi) == 0 &&
+      aws_eks_cluster.this.vpc_config[0].endpoint_private_access &&
+      !aws_eks_cluster.this.vpc_config[0].endpoint_public_access &&
+      !aws_eks_cluster.this.access_config[0].bootstrap_cluster_creator_admin_permissions &&
+      aws_eks_access_policy_association.operator.principal_arn == var.operator_role_arn &&
+      aws_vpc_security_group_ingress_rule.operator["10.2.1.0/24"].to_port == 443 &&
+      jsondecode(aws_eks_addon.vpc_cni.configuration_values).enableNetworkPolicy == "true" &&
+      !contains(keys(aws_iam_role_policy_attachment.nodes), "AmazonEKS_CNI_Policy") &&
+      aws_launch_template.system.metadata_options[0].http_tokens == "required" &&
+      aws_launch_template.system.metadata_options[0].http_put_response_hop_limit == 1
+    )
+    error_message = "Cluster must enforce private API, explicit operator RBAC, VPC CNI policy, IMDSv2 hop-limit 1, and disabled CSI by default."
   }
 }
 
-run "storage_identity_is_scoped" {
+run "storage_identity_is_cluster_scoped_and_secrets_encrypted" {
   command = plan
   variables {
     enable_ebs_csi = true
@@ -48,10 +70,24 @@ run "storage_identity_is_scoped" {
   assert {
     condition = (
       aws_eks_addon.ebs_csi[0].addon_name == "aws-ebs-csi-driver" &&
+      jsondecode(aws_eks_addon.ebs_csi[0].configuration_values).controller.k8sTagClusterId == "storage-test" &&
+      aws_iam_role.ebs_csi[0].tags["eks-cluster-name"] == "storage-test" &&
       jsondecode(aws_iam_role.ebs_csi[0].assume_role_policy).Statement[0].Condition.StringEquals["oidc.eks.ap-southeast-1.amazonaws.com/id/TEST:sub"] == "system:serviceaccount:kube-system:ebs-csi-controller-sa" &&
       jsondecode(aws_iam_role.ebs_csi[0].assume_role_policy).Statement[0].Condition.StringEquals["oidc.eks.ap-southeast-1.amazonaws.com/id/TEST:aud"] == "sts.amazonaws.com" &&
-      aws_iam_role_policy_attachment.ebs_csi[0].policy_arn == "arn:aws:iam::aws:policy/AmazonEBSCSIDriverPolicyV2"
+      aws_iam_role_policy_attachment.ebs_csi[0].policy_arn == "arn:aws:iam::aws:policy/AmazonEBSCSIDriverEKSClusterScopedPolicy" &&
+      aws_kms_key.cluster.enable_key_rotation &&
+      contains(aws_eks_cluster.this.encryption_config[0].resources, "secrets") &&
+      toset(aws_eks_cluster.this.enabled_cluster_log_types) == toset(["api", "audit", "authenticator", "controllerManager", "scheduler"]) &&
+      aws_launch_template.system.block_device_mappings[0].ebs[0].encrypted
     )
-    error_message = "Persistent storage requires the CSI addon and an audience/ServiceAccount-bound role."
+    error_message = "Persistent storage and cluster encryption settings must be enforced."
   }
+}
+
+run "reject_open_world_operator_cidr" {
+  command = plan
+  variables {
+    operator_access_cidrs = ["0.0.0.0/0"]
+  }
+  expect_failures = [var.operator_access_cidrs]
 }

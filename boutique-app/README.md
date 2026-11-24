@@ -1,9 +1,9 @@
 # boutique-app
 
-Application source for the [Cost-aware GitOps Platform](https://github.com/cost-aware-gitops-platform),
+Application source for the [Cost-aware GitOps Platform](https://github.com/workwithcrow12-art/cost-aware-gitops-platform),
 and the CI that builds, scans and ships it.
 
-> This repository is a fork of
+> The application source derives from
 > [GoogleCloudPlatform/microservices-demo](https://github.com/GoogleCloudPlatform/microservices-demo) (Apache 2.0).
 > The project adds CI, container scanning and GitOps promotion around the upstream service code.
 > A checkout error-status call also has a one-line compatibility fix for Go vet.
@@ -24,44 +24,35 @@ and the CI that builds, scans and ships it.
 | recommendationservice | Python | Product recommendations |
 | adservice | Java | Contextual ads |
 | loadgenerator | Python (Locust) | Optional simulated traffic in dev and staging |
+| shoppingassistantservice | Python (Flask / Gemini / AlloyDB) | Optional GCP-only RAG assistant (excluded from base deployment and GHCR image matrix; unit-tested in `services.yml`) |
 
 ## Pipeline
 
 ```text
-pull request → Go, .NET, Node.js and Python tests → container builds → Trivy scan
-main push    → same checks → publish scanned images → open or refresh the GitOps dev PR
-preview      → dispatch on protected main → build the approved PR head → open a GitOps preview PR
+pull request / main push → service tests → container builds → HIGH/CRITICAL scan gate
+v* tag → require successful validation of current main → rebuild, scan and publish → release
+deployment → review published digest records → GitOps PR → Argo CD sync
 ```
 
-The matrix builds a complete set of 11 images from one revision, including the optional load generator.
-Trivy scans the local Docker image before publication and blocks on HIGH or CRITICAL vulnerabilities.
-Promotion takes the manifest digest from that same push and validates all 11 records from the current run.
-GitOps deploys those digests. SHA tags in GHCR identify the source revision for browsing.
+Active workflows are at the monorepo root: `.github/workflows/services.yml`, `images.yml`, `ci.yml` and `release.yml`. Nested workflows are standalone examples and do not run here. Automatic dev promotion and dispatched preview publication have not been ported to root workflows. A push to `main` validates images with `publish: false`.
+
+The matrix builds all 11 images from one revision, including the optional load generator. Trivy scans the local Docker image before publication and blocks HIGH or CRITICAL vulnerabilities. The publication job retains a manifest digest record for each service. The GitOps base remains on pinned upstream images until a deployment PR changes it; SHA tags alone do not update a cluster.
 
 ## Connect GitHub and GitOps
 
-1. Protect `main` in both repositories and require review of workflow and bootstrap changes. In this repository,
-   create the GitHub Actions environment `gitops-promotion` and restrict deployments to `main`. Store
-   `GITOPS_TOKEN` only as an environment secret. Grant the token Contents and Pull requests write access only
-   to the config repository, with no bypass of its branch rules. Remove any old repository-level copy of
-   this secret. Set `GITOPS_REPOSITORY` if it differs from `<owner>/gitops-config`.
-2. Give the clusters pull access to the GHCR packages. The lab manifests assume public packages, which GitHub
-   can create with private visibility on the first push. Use public packages only for code intended to be public.
-3. After the regular PR checks pass, add the `preview` label to a reviewed same-repository PR into `main`.
-   Dispatch **Build Online Boutique**
-   from protected `main`, providing the PR number and its full head SHA. Review and merge the resulting GitOps
-   PR to allow that exact revision to run. Closing the app PR, removing its label or changing its head triggers
-   cleanup when Argo CD next polls. Dispatch again to preview a new revision.
-4. Review and merge the dev PR. For staging and production, propose the same tested digests in each environment
-   overlay through separate GitOps PRs.
+1. Protect `main` in the monorepo and require review of workflow, bootstrap and deployment changes. Active workflows do not need a cross-repository `GITOPS_TOKEN` or a `gitops-promotion` environment; those settings belong only to the nested examples.
+2. Give clusters pull access to GHCR packages. The lab assumes public packages; newly published packages may need their visibility changed, or private-registry credentials configured.
+3. After successful `v0.9` publication, download the `scanned-image-*` artifacts before their three-day retention expires. Check that all records identify the intended revision. From the monorepo root, run `python boutique-app/.github/scripts/scanned-images.py --help` for helper inputs. It validates records and prints image replacements; it does not open a PR.
+4. Propose reviewed digests in `gitops-config/apps/boutique/overlays/dev/kustomization.yaml`, then promote the tested references to staging and production in separate PRs. Preview manifests are configured, but the operator must prepare and review the matching release record. No active workflow generates it; see the GitOps README for record paths and cleanup conditions.
 
 ## Local development
 
-Run `go test ./...` in the frontend, checkoutservice, productcatalogservice or shippingservice directory.
+Run `go vet ./... && go test -race ./...` in the frontend, checkoutservice, productcatalogservice or shippingservice directory.
 The product catalog service uses Unix signals, so run its test suite on Linux.
+Run `./gradlew test --no-daemon` in `src/adservice` with Java 21 to test the contextual ad gRPC service.
 Run `dotnet test src/cartservice/tests/cartservice.tests.csproj` from this repository to test the cart service.
 Run `npm ci --ignore-scripts && npm test` in `src/paymentservice` and `src/currencyservice` with Node.js 24. Payment tests cover accepted, invalid, expired and unsupported cards; currency tests start the actual gRPC server on a local port.
-With Python 3.14 and a virtual environment, run `python -m pip install -r requirements.txt` followed by `python -m unittest discover -v` in `src/emailservice` and `src/recommendationservice`. These tests use loopback gRPC servers to check health responses, mock email confirmation and recommendation filtering and limits; they need local socket access.
+With Python 3.14 and a virtual environment, run `python -m pip install -r requirements.txt` followed by `python -m unittest discover -v` in `src/emailservice`, `src/recommendationservice`, and `src/loadgenerator` (and `python -m unittest discover -v` with `flask` installed in `src/shoppingassistantservice`). The gRPC service tests use loopback servers and need local socket access.
 The checkout Go suite exercises order totals, cart clearing and a declined payment through in-memory gRPC dependencies. It does not require AWS or a cluster.
 Run `python -m unittest discover -s .github/tests` to test the release record validation and the HTTP smoke command against a local test server. The HTTP and currency checks require local socket access.
 Build an individual image with `docker build -t boutique-frontend src/frontend`. The cart service's build context

@@ -1,6 +1,14 @@
 version: 0.1
 projects:
   - path: envs/nonprod
-    name: nonprod
+    name: aws-nonprod
   - path: envs/prod
-    name: prod
+    name: aws-prod
+  - path: envs/gke
+    name: gcp-gke
+    terraform_var_files:
+      - terraform.tfvars.example
+  - path: envs/aks
+    name: azure-aks
+    terraform_var_files:
+      - terraform.tfvars.example

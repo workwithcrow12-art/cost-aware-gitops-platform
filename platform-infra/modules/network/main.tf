@@ -8,8 +8,9 @@ data "aws_availability_zones" "available" {
 }
 
 locals {
-  zones     = slice(data.aws_availability_zones.available.names, 0, var.az_count)
-  nat_zones = var.nat_per_az ? toset(local.zones) : toset(slice(local.zones, 0, 1))
+  zones              = slice(data.aws_availability_zones.available.names, 0, var.az_count)
+  nat_zones          = var.nat_per_az ? toset(local.zones) : toset(slice(local.zones, 0, 1))
+  interface_services = var.enable_interface_endpoints ? toset(["ecr.api", "ecr.dkr", "sts", "logs"]) : toset([])
 }
 
 resource "aws_vpc" "this" {
@@ -106,4 +107,49 @@ resource "aws_route_table_association" "private" {
 
   route_table_id = aws_route_table.private[each.key].id
   subnet_id      = each.value.id
+}
+
+resource "aws_vpc_endpoint" "s3" {
+  count = var.enable_s3_endpoint ? 1 : 0
+
+  vpc_id            = aws_vpc.this.id
+  service_name      = "com.amazonaws.${data.aws_region.current.region}.s3"
+  vpc_endpoint_type = "Gateway"
+  route_table_ids   = values(aws_route_table.private)[*].id
+
+  tags = { Name = "${var.name}-s3" }
+}
+
+resource "aws_security_group" "endpoints" {
+  count = var.enable_interface_endpoints ? 1 : 0
+
+  name        = "${var.name}-vpc-endpoints"
+  description = "Allow HTTPS from VPC workloads to interface VPC endpoints"
+  vpc_id      = aws_vpc.this.id
+
+  tags = { Name = "${var.name}-vpc-endpoints" }
+}
+
+resource "aws_vpc_security_group_ingress_rule" "endpoints_https" {
+  count = var.enable_interface_endpoints ? 1 : 0
+
+  security_group_id = aws_security_group.endpoints[0].id
+  description       = "HTTPS from VPC CIDR"
+  cidr_ipv4         = var.vpc_cidr
+  ip_protocol       = "tcp"
+  from_port         = 443
+  to_port           = 443
+}
+
+resource "aws_vpc_endpoint" "interface" {
+  for_each = local.interface_services
+
+  vpc_id              = aws_vpc.this.id
+  service_name        = "com.amazonaws.${data.aws_region.current.region}.${each.key}"
+  vpc_endpoint_type   = "Interface"
+  subnet_ids          = values(aws_subnet.private)[*].id
+  security_group_ids  = [aws_security_group.endpoints[0].id]
+  private_dns_enabled = true
+
+  tags = { Name = "${var.name}-${replace(each.key, ".", "-")}" }
 }

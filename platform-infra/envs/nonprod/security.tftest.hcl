@@ -14,9 +14,30 @@ mock_provider "aws" {
   mock_data "aws_region" {
     defaults = { region = "ap-southeast-1" }
   }
+  mock_resource "aws_kms_key" {
+    override_during = plan
+    defaults        = { arn = "arn:aws:kms:ap-southeast-1:123456789012:key/nonprod-test-key" }
+  }
+  mock_resource "aws_s3_bucket" {
+    override_during = plan
+    defaults        = { id = "finops-results-nonprod", arn = "arn:aws:s3:::finops-results-nonprod" }
+  }
+  mock_resource "aws_eks_cluster" {
+    override_during = plan
+    defaults = {
+      identity = [{ oidc = [{ issuer = "https://oidc.eks.ap-southeast-1.amazonaws.com/id/NONPROD" }] }]
+    }
+  }
+  mock_resource "aws_iam_openid_connect_provider" {
+    override_during = plan
+    defaults = {
+      arn = "arn:aws:iam::123456789012:oidc-provider/oidc.eks.ap-southeast-1.amazonaws.com/id/NONPROD"
+      url = "https://oidc.eks.ap-southeast-1.amazonaws.com/id/NONPROD"
+    }
+  }
 }
 
-run "nonprod_environment_plan" {
+run "nonprod_environment_plan_with_ebs_csi_parity" {
   command = plan
 
   variables {
@@ -28,108 +49,54 @@ run "nonprod_environment_plan" {
     condition = (
       output.cluster_name == "cost-aware-nonprod" &&
       length(module.network.private_subnet_ids) == 2 &&
-      local.cost_tags.env == "nonprod"
+      local.cost_tags.env == "nonprod" &&
+      var.enable_ebs_csi
     )
-    error_message = "The full nonprod plan must wire the nonprod cluster, two private AZ subnets and nonprod cost tags."
+    error_message = "Nonprod plan must wire the nonprod cluster, two private AZ subnets, EBS CSI parity and nonprod cost tags."
   }
 }
 
-run "vpc_records_accepted_and_rejected_flows" {
+run "nonprod_wires_optional_finops_oidc_and_karpenter" {
   command = plan
 
-  module {
-    source = "../../modules/network"
-  }
-
   variables {
-    name       = "cost-aware-test"
-    vpc_cidr   = "10.30.0.0/16"
-    az_count   = 2
-    nat_per_az = false
-  }
-
-  assert {
-    condition = (
-      aws_flow_log.this.traffic_type == "ALL" &&
-      aws_flow_log.this.log_destination_type == "cloud-watch-logs" &&
-      aws_cloudwatch_log_group.flow_logs.retention_in_days == 14
-    )
-    error_message = "The VPC must record accepted and rejected flows in CloudWatch Logs."
-  }
-
-  assert {
-    condition = (
-      jsondecode(aws_iam_role.flow_logs.assume_role_policy).Statement[0].Condition.StringEquals["aws:SourceAccount"] == "123456789012" &&
-      jsondecode(aws_iam_role.flow_logs.assume_role_policy).Statement[0].Condition.ArnLike["aws:SourceArn"] == "arn:aws:ec2:ap-southeast-1:123456789012:vpc-flow-log/*"
-    )
-    error_message = "Flow log delivery must only trust VPC flow logs from this account and region."
-  }
-}
-
-run "private_cluster_and_explicit_operator" {
-  command = plan
-
-  module {
-    source = "../../modules/cluster"
-  }
-
-  variables {
-    name                  = "cost-aware-test"
-    kubernetes_version    = "1.35"
-    subnet_ids            = ["subnet-00000000000000001", "subnet-00000000000000002"]
-    operator_access_cidrs = ["10.2.1.0/24"]
     operator_role_arn     = "arn:aws:iam::123456789012:role/ClusterOperator"
-    capacity_type         = "SPOT"
-    instance_types        = ["m6i.large"]
-    node_count            = 2
-    cost_tags = {
-      team = "platform", env = "nonprod", project = "cost-aware-gitops", owner = "platform"
+    operator_access_cidrs = ["10.2.1.0/24"]
+    enable_karpenter      = true
+    budget                = { monthly_limit_usd = 150, email = "finops@example.com" }
+    cost_reporting = {
+      enable_reporter = true
+      cur_catalog     = { database_name = "finops_nonprod", table_name = "cur", data_s3 = "s3://billing-data/cur/parquet/" }
+    }
+    github_oidc = {
+      provider_arn = "arn:aws:iam::123456789012:oidc-provider/token.actions.githubusercontent.com"
+      roles = {
+        apply = {
+          subjects   = ["repo:example/platform:environment:nonprod"]
+          policy_arn = "arn:aws:iam::123456789012:policy/NonprodApply"
+        }
+      }
     }
   }
 
   assert {
-    condition     = aws_eks_cluster.this.vpc_config[0].endpoint_private_access && !aws_eks_cluster.this.vpc_config[0].endpoint_public_access
-    error_message = "The EKS Kubernetes API must only be available through the private endpoint."
-  }
-
-  assert {
-    condition     = !aws_eks_cluster.this.access_config[0].bootstrap_cluster_creator_admin_permissions
-    error_message = "EKS must not grant implicit cluster admin access to the creator."
-  }
-
-  assert {
     condition = (
-      aws_eks_access_policy_association.operator.principal_arn == var.operator_role_arn &&
-      aws_vpc_security_group_ingress_rule.operator["10.2.1.0/24"].from_port == 443 &&
-      aws_vpc_security_group_ingress_rule.operator["10.2.1.0/24"].to_port == 443
+      output.budget_name == "cost-aware-nonprod-monthly" &&
+      output.athena_workgroup == "cost-aware-nonprod-finops" &&
+      length(module.karpenter) == 1 &&
+      length(module.github_oidc) == 1
     )
-    error_message = "The explicit operator must have access and the routed CIDR must be restricted to the Kubernetes API port."
+    error_message = "Optional environment modules must wire cleanly when configured."
+  }
+}
+
+run "nonprod_rejects_world_operator_cidr" {
+  command = plan
+
+  variables {
+    operator_role_arn     = "arn:aws:iam::123456789012:role/ClusterOperator"
+    operator_access_cidrs = ["0.0.0.0/0"]
   }
 
-  assert {
-    condition = (
-      jsondecode(aws_eks_addon.vpc_cni.configuration_values).enableNetworkPolicy == "true" &&
-      !contains(keys(aws_iam_role_policy_attachment.nodes), "AmazonEKS_CNI_Policy")
-    )
-    error_message = "The managed VPC CNI must enforce network policies and node IAM roles must not have the CNI policy."
-  }
-
-  assert {
-    condition = (
-      toset([for spec in aws_launch_template.system.tag_specifications : spec.resource_type]) == toset(["instance", "volume"]) &&
-      alltrue([for spec in aws_launch_template.system.tag_specifications : spec.tags == var.cost_tags]) &&
-      length(aws_eks_node_group.system.launch_template) == 1
-    )
-    error_message = "The system node group must launch EC2 instances and EBS volumes with all environment cost tags."
-  }
-
-  assert {
-    condition = (
-      length(aws_launch_template.system.metadata_options) == 1 &&
-      alltrue([for options in aws_launch_template.system.metadata_options :
-        options.http_tokens == "required" && options.http_put_response_hop_limit == 1
-      ])
-    )
-    error_message = "The custom launch template must require IMDSv2 and retain hop limit 1 so ordinary pods cannot retrieve node credentials."
-  }
+  expect_failures = [module.cluster.var.operator_access_cidrs]
 }

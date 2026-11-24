@@ -1,4 +1,43 @@
+data "aws_caller_identity" "current" {}
 data "aws_partition" "current" {}
+data "aws_region" "current" {}
+
+resource "aws_kms_key" "cluster" {
+  description             = "KMS key for ${var.name} EKS secrets and control-plane logs"
+  deletion_window_in_days = 7
+  enable_key_rotation     = true
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid       = "EnableAccountRootAdministration"
+        Effect    = "Allow"
+        Principal = { AWS = "arn:${data.aws_partition.current.partition}:iam::${data.aws_caller_identity.current.account_id}:root" }
+        Action    = "kms:*"
+        Resource  = "*"
+      },
+      {
+        Sid       = "AllowCloudWatchLogsEncryption"
+        Effect    = "Allow"
+        Principal = { Service = "logs.${data.aws_region.current.region}.amazonaws.com" }
+        Action = [
+          "kms:Encrypt*",
+          "kms:Decrypt*",
+          "kms:ReEncrypt*",
+          "kms:GenerateDataKey*",
+          "kms:Describe*",
+        ]
+        Resource = "*"
+        Condition = {
+          ArnLike = {
+            "kms:EncryptionContext:aws:logs:arn" = "arn:${data.aws_partition.current.partition}:logs:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:log-group:/aws/eks/${var.name}/*"
+          }
+        }
+      },
+    ]
+  })
+}
 
 resource "aws_iam_role" "cluster" {
   name = "${var.name}-control-plane"
@@ -20,13 +59,21 @@ resource "aws_iam_role_policy_attachment" "cluster" {
 resource "aws_cloudwatch_log_group" "cluster" {
   name              = "/aws/eks/${var.name}/cluster"
   retention_in_days = 14
+  kms_key_id        = aws_kms_key.cluster.arn
 }
 
 resource "aws_eks_cluster" "this" {
   name                      = var.name
   role_arn                  = aws_iam_role.cluster.arn
   version                   = var.kubernetes_version
-  enabled_cluster_log_types = ["api", "audit", "authenticator"]
+  enabled_cluster_log_types = ["api", "audit", "authenticator", "controllerManager", "scheduler"]
+
+  encryption_config {
+    provider {
+      key_arn = aws_kms_key.cluster.arn
+    }
+    resources = ["secrets"]
+  }
 
   access_config {
     authentication_mode                         = "API"
@@ -157,6 +204,17 @@ resource "aws_iam_role_policy_attachment" "nodes" {
 
 resource "aws_launch_template" "system" {
   name_prefix = "${var.name}-system-"
+
+  block_device_mappings {
+    device_name = "/dev/xvda"
+
+    ebs {
+      volume_type           = "gp3"
+      volume_size           = var.root_volume_size_gb
+      encrypted             = true
+      delete_on_termination = true
+    }
+  }
 
   metadata_options {
     http_endpoint               = "enabled"

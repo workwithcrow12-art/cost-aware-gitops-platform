@@ -3,7 +3,6 @@ kind: Kustomization
 namespace: boutique-preview
 resources:
   - ../../base
-  - namespace.yaml
 components:
   - ../../components/restricted
 labels:

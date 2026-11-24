@@ -1,1 +1,10 @@
+# Default repository owner
 * @workwithcrow12-art
+
+# Component ownership boundaries
+/.github/ @workwithcrow12-art
+/platform-infra/ @workwithcrow12-art
+/gitops-config/ @workwithcrow12-art
+/finops-toolkit/ @workwithcrow12-art
+/boutique-app/ @workwithcrow12-art
+/scripts/ @workwithcrow12-art

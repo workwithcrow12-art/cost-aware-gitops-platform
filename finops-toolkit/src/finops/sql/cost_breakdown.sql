@@ -4,13 +4,17 @@ WITH usage AS (
         CASE WHEN line_item_usage_start_date >= TIMESTAMP '$midpoint 00:00:00'
             THEN 'current' ELSE 'previous' END AS period,
         CAST(line_item_usage_start_date AS DATE) AS usage_date,
-        COALESCE(NULLIF(resource_tags_user_env, ''), 'unallocated') AS environment,
-        COALESCE(NULLIF(resource_tags_user_team, ''), 'unallocated') AS team,
-        COALESCE(NULLIF(line_item_product_code, ''), 'unallocated') AS service,
+        $env_expr AS environment,
+        $team_expr AS team,
+        COALESCE(NULLIF(TRIM(line_item_product_code), ''), 'unallocated') AS service,
         CAST(line_item_unblended_cost AS DECIMAL(38, 12)) AS cost
     FROM "$table"
-    WHERE line_item_usage_start_date >= TIMESTAMP '$start 00:00:00'
+    WHERE $partition_filter
+        line_item_usage_start_date >= TIMESTAMP '$start 00:00:00'
         AND line_item_usage_start_date < TIMESTAMP '$end 00:00:00'
+        AND COALESCE(line_item_line_item_type, 'Usage') IN (
+            'Usage', 'DiscountedUsage', 'SavingsPlanCoveredUsage'
+        )
 ), coverage AS (
     SELECT period, COUNT(DISTINCT usage_date) AS usage_days
     FROM usage

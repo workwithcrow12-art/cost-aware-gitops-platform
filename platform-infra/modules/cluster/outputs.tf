@@ -13,3 +13,11 @@ output "endpoint" {
 output "oidc_provider_arn" {
   value = aws_iam_openid_connect_provider.cluster.arn
 }
+
+output "oidc_issuer_url" {
+  value = aws_iam_openid_connect_provider.cluster.url
+}
+
+output "kms_key_arn" {
+  value = aws_kms_key.cluster.arn
+}

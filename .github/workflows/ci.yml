@@ -1,8 +1,22 @@
 name: Release validation
 on:
   push:
-    branches: [main, 'codex/**']
+    branches: [main]
+    paths-ignore:
+      - '**.md'
+      - 'LICENSE'
+      - 'NOTICE'
+      - '.gitattributes'
+      - '.gitignore'
+      - '.github/CODEOWNERS'
   pull_request:
+    paths-ignore:
+      - '**.md'
+      - 'LICENSE'
+      - 'NOTICE'
+      - '.gitattributes'
+      - '.gitignore'
+      - '.github/CODEOWNERS'
   workflow_dispatch:
 
 permissions:

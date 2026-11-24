@@ -58,6 +58,17 @@ variable "node_count" {
   type        = number
 }
 
+variable "root_volume_size_gb" {
+  description = "Encrypted gp3 root volume size in GiB for worker nodes."
+  type        = number
+  default     = 20
+
+  validation {
+    condition     = var.root_volume_size_gb >= 20
+    error_message = "Worker root EBS volumes must be at least 20 GiB."
+  }
+}
+
 variable "cost_tags" {
   description = "Cost allocation tags applied to worker EC2 instances and their EBS volumes."
   type        = map(string)

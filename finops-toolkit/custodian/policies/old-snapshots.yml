@@ -1,8 +1,13 @@
 policies:
   - name: old-snapshots
     resource: aws.ebs-snapshot
-    description: Find EBS snapshots over 90 days old for manual retention review.
+    description: Find completed non-AMI, non-AWS-Backup EBS snapshots over 90 days old for manual retention review.
     filters:
+      - State: completed
+      - "tag:finops:ignore": absent
+      - "tag:aws:backup:source-resource": absent
+      - type: skip-ami-snapshots
+        value: true
       - type: age
         days: 90
         op: greater-than

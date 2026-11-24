@@ -1,10 +1,19 @@
-.PHONY: lint test run
+PYTHON ?= python
+
+.PHONY: lint test coverage custodian-validate run
 
 lint:
-	python -m ruff check src tests
+	$(PYTHON) -m ruff check src tests
 
 test:
-	python -m unittest discover -s tests -v
+	PYTHONPATH=src $(PYTHON) -m unittest discover -s tests -v
+
+coverage:
+	PYTHONPATH=src $(PYTHON) -m coverage run --source=finops -m unittest discover -s tests -v
+	$(PYTHON) -m coverage report --fail-under=90 -m
+
+custodian-validate:
+	custodian validate custodian/policies/*.yml
 
 run:
-	finops report --fixtures tests/fixtures
+	PYTHONPATH=src $(PYTHON) -m finops.cli report --fixtures tests/fixtures

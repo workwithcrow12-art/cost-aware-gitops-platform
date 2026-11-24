@@ -1,6 +1,6 @@
 # finops-toolkit
 
-Cost reporting and waste detection for the [Cost-aware GitOps Platform](https://github.com/cost-aware-gitops-platform).
+Cost reporting and waste detection for the [Cost-aware GitOps Platform](https://github.com/workwithcrow12-art/cost-aware-gitops-platform).
 The report can run weekly as a Kubernetes CronJob and optionally send results to Telegram or Slack.
 
 ## What it does
@@ -13,7 +13,7 @@ The report can run weekly as a Kubernetes CronJob and optionally send results to
 
 ## Offline demo
 
-With Python 3.11 or newer, run from this repository root. The demo reads synthetic fixtures locally and needs no credentials, Python dependencies, or cluster.
+With Python 3.11 or newer, run from the monorepo's `finops-toolkit` directory. The demo reads synthetic fixtures locally and needs no credentials, Python dependencies, or cluster.
 
 ```bash
 PYTHONPATH=src python -m finops.cli report --fixtures tests/fixtures
@@ -57,7 +57,7 @@ Record the rate source and valuation date with your report: the same supplied
 table applies to both weeks, so this is a constant-rate comparison, not an
 invoice settlement calculation. The CLI never downloads exchange rates.
 
-The command always prints locally and never sends notifications. The existing `report` and `waste` commands retain their behavior. See the [Vietnamese quick-start](https://github.com/workwithcrow12-art/cost-aware-gitops-platform/blob/main/.github/docs/quick-start.md) for the cross-repository setup.
+The command always prints locally and never sends notifications. The existing `report` and `waste` commands retain their behavior. See the [Vietnamese quick-start](https://github.com/workwithcrow12-art/cost-aware-gitops-platform/blob/main/.github/docs/quick-start.md) for the monorepo setup.
 
 ## Live report
 
@@ -79,6 +79,8 @@ Export the environment variables below or populate `.env` from `.env.example` an
 | `ATHENA_DATABASE` | Glue database holding the CUR table |
 | `ATHENA_WORKGROUP` | Athena workgroup |
 | `ATHENA_OUTPUT_S3` | S3 location for Athena query results |
+| `ATHENA_PARTITIONED` | `true` (default) adds `year`/`month` partition predicates; set `false` for unpartitioned Glue tables |
+| `ATHENA_ENV_TAG_COLUMN`, `ATHENA_TEAM_TAG_COLUMN` | CUR cost-allocation tag columns (`resource_tags_user_env` and `resource_tags_user_team` by default, or `none` if unactivated) |
 | `NOTIFIER` | `telegram` or `slack`. Leave empty to print to stdout. |
 | `NOTIFY_FAILURES` | Set `true` to send a generic failure notice when live `report` or `waste` generation fails. Defaults to off; fixtures and `--dry-run` never notify. |
 | `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` | Telegram destination |
@@ -99,7 +101,7 @@ custodian run --dryrun --region us-east-1 --output-dir output custodian/policies
 finops waste --input output --dry-run
 ```
 
-Configure `AWS_REGION` and `AWS_CUSTODIAN_ROLE_ARN` as GitHub repository variables to enable the scheduled workflow on `main`. Its role must trust the repository's GitHub OIDC subject for `refs/heads/main` and have read permissions for the queried EC2, ELBv2, and CloudWatch APIs. The workflow uploads the aggregate Markdown summary as an artifact. Optionally set repository variable `NOTIFIER` to `slack` or `telegram` and the corresponding destination credentials as repository secrets. The final step sends the completed report or a generic workflow failure notice. Configure notification routing separately for runs that cannot start or check out the repository.
+The nested `.github/workflows/custodian-weekly.yml` is a standalone example and is not scheduled in this monorepo. Run the CLI commands above manually, or adapt the workflow into root `.github/workflows` with `finops-toolkit` as its working directory. For that adapted workflow, configure `AWS_REGION` and `AWS_CUSTODIAN_ROLE_ARN` as GitHub repository variables. Its role must trust the repository's GitHub OIDC subject for `refs/heads/main` and have read permissions for the queried EC2, ELBv2, and CloudWatch APIs. The workflow uploads the aggregate Markdown summary as an artifact. Optionally set repository variable `NOTIFIER` to `slack` or `telegram` and the corresponding destination credentials as repository secrets. The final step sends the completed report or a generic workflow failure notice. Configure notification routing separately for runs that cannot start or check out the repository.
 
 The policies report candidates for review and define no resource actions. The EBS filter checks that an available volume was created over seven days ago. Snapshot age alone gives no retention decision, and the full source volume size is a proxy for snapshot storage. The ALB estimate uses a flat hourly charge with zero requests as the candidate signal. Waste amounts use a 730-hour month and these illustrative US East defaults:
 
@@ -125,7 +127,7 @@ make lint test run
 
 ## Deployment
 
-1. After the release checks pass, push the `v0.9` tag (Python package version `0.9.0`). `release.yml` runs the same tests, lint, policy validation and container smoke checks as pull requests, then scans the release image with Trivy. HIGH/CRITICAL findings block publication to `ghcr.io/<owner>/finops-toolkit:<tag>`.
+1. Root `.github/workflows/finops.yml` validates pull requests and main pushes, including lint, tests, policy checks, fixture commands, runtime tests and image scans. Root `release.yml` handles `v*` release tags: it requires successful validation of the current main SHA, rebuilds the image, smoke-tests and scans it, publishes it to GHCR, and records the immutable `@sha256` manifest digest. HIGH/CRITICAL findings block publication. Nested release workflows are standalone examples.
 2. Update the image tag in
    [`gitops-config/platform/finops-reporter/cronjob.yaml`](https://github.com/workwithcrow12-art/cost-aware-gitops-platform/blob/main/gitops-config/platform/finops-reporter/cronjob.yaml)
    through a pull request and enable the optional reporter Application.

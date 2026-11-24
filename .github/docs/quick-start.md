@@ -1,12 +1,12 @@
 # Bắt đầu với Cost-aware GitOps Platform
 
-## 1. Hiểu luồng giữa các repo
+## 1. Hiểu luồng giữa các thành phần
 
-| Repo | Việc cần làm ở đây | Kết quả chuyển sang repo khác |
+| Thư mục | Việc cần làm ở đây | Kết quả chuyển sang thành phần khác |
 | --- | --- | --- |
 | `platform-infra` | Terraform tạo cluster, mạng, quyền truy cập; bootstrap Argo CD | Kubernetes context cho `gitops-config`; cấu hình Athena cho reporter |
 | `gitops-config` | Argo CD cài platform add-on và Boutique từ Git | OpenCost cung cấp allocation API cho `finops-toolkit` |
-| `boutique-app` | Kiểm thử, build, scan image; đề xuất digest qua PR | Digest được review và promote trong `gitops-config` |
+| `boutique-app` | Kiểm thử, build, scan image; operator đề xuất digest qua PR | Digest được review và promote trong `gitops-config` |
 | `finops-toolkit` | Báo cáo OpenCost, Athena và CSV billing nhiều cloud | Markdown ở stdout; thông báo là cấu hình tùy chọn |
 | `.github` | Kiến trúc, runbook và bằng chứng kiểm tra | Điểm bắt đầu để chọn đúng quy trình |
 
@@ -19,7 +19,7 @@ cd cost-aware-gitops-platform
 
 ## 2. Demo offline trước, không cần tài khoản cloud
 
-Cần Python 3.11 trở lên. Từ thư mục chứa các repo, chạy PowerShell:
+Cần Python 3.11 trở lên. Từ root monorepo, chạy PowerShell. Để lưu toàn bộ log và báo cáo vào một thư mục mới, dùng `python scripts/portfolio_demo.py`; xem [kịch bản demo 5 phút](demo.md). Các lệnh riêng lẻ tương đương:
 
 ```powershell
 $env:PYTHONPATH = (Resolve-Path finops-toolkit/src).Path
@@ -74,7 +74,7 @@ GKE dùng Dataplane V2, AKS dùng Calico để thực thi NetworkPolicy. Firewal
 
 ## 4. Bootstrap cùng một cấu hình GitOps
 
-Push các repo fork trước; sửa URL owner/repository trong `gitops-config/bootstrap`, `applicationsets` và `platform/*-app.yaml` như hướng dẫn trong README repo. Với repo private, thêm credential vào Argo CD. Chuẩn bị Redis Sealed Secret theo README `gitops-config` trước khi sync Boutique.
+Push monorepo trước; sửa URL owner/repository trong `gitops-config/bootstrap`, `applicationsets` và `platform/*-app.yaml` như hướng dẫn trong README repo. Với repo private, thêm credential vào Argo CD. Chuẩn bị Redis Sealed Secret theo README `gitops-config` trước khi sync Boutique.
 
 Từ `platform-infra`, với GKE/AKS đã lấy kubeconfig:
 
@@ -147,7 +147,7 @@ make validate
 python3 -m unittest discover -s tests -v
 ```
 
-`make validate` chạy fmt, validate và mock plans cho AWS bootstrap/nonprod/prod, GKE, AKS và module Athena; không dùng credential cloud. Hai workflow apply/drift vẫn dành cho EKS; GKE/AKS được provision bằng lệnh root tương ứng ở trên.
+`make validate` chạy fmt, validate và mock plans cho AWS bootstrap/nonprod/prod, GKE, AKS và module Athena; không dùng credential cloud. Apply/drift hiện chỉ có trong workflow ví dụ lồng ở `platform-infra/.github/workflows`, không hoạt động ở monorepo. Provision EKS bằng lệnh local trong runbook; GKE/AKS dùng root tương ứng ở trên.
 
 Từ `gitops-config`:
 
@@ -155,7 +155,7 @@ Từ `gitops-config`:
 kyverno test platform/kyverno/tests
 ```
 
-CI đã chạy Kyverno CLI trên PR/push; bộ test kiểm tra cả Pod, initContainer, Deployment và phạm vi namespace. Không cần tạo cluster kuttl chỉ để kiểm tra các rule hiện tại. Render/schema checks và Redis image scan vẫn nằm trong workflow `Validate GitOps`.
+CI được cấu hình chạy Kyverno CLI trên PR/push; bộ test kiểm tra cả Pod, initContainer, Deployment và phạm vi namespace. Không cần tạo cluster kuttl chỉ để kiểm tra các rule hiện tại. Render/schema checks và Redis image scan nằm trong workflow root `.github/workflows/gitops.yml`, được `Release validation` gọi.
 
 Từ `finops-toolkit`:
 

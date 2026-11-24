@@ -2,4 +2,15 @@
 *.sh text eol=lf
 *.yml text eol=lf
 *.yaml text eol=lf
+*.tf text eol=lf
+*.tfvars text eol=lf
+*.hcl text eol=lf
+*.rego text eol=lf
+*.py text eol=lf
+Dockerfile* text eol=lf
+Makefile text eol=lf
 gradlew text eol=lf
+
+# Exclude vendored sample application from GitHub repository language stats
+boutique-app/** linguist-vendored
+

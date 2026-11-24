@@ -1,11 +1,12 @@
 # Rebuild the nonprod cluster
 
 Use an AWS lab account and check your account identity and budget before provisioning. The control
-plane and network resources incur charges while the cluster exists. Clone `platform-infra` and
-`gitops-config` side by side and follow their READMEs for tool versions and repository settings.
+plane and network resources incur charges while the cluster exists. Clone the monorepo, then run
+the infrastructure commands below from `platform-infra`. Its sibling `gitops-config` contains desired state.
+Use the [AWS lab evidence checklist](aws-lab-evidence.md) to record prerequisites and results.
 
 The dev and staging workloads run from 08:00 to 20:00 on weekdays in Asia/Ho_Chi_Minh.
-For a demo outside that window, adjust the dev namespace's `downscaler/uptime` annotation in GitOps before bootstrapping.
+For a demo outside that window, temporarily commit `downscaler/force-uptime: "true"` on the dev Namespace and revert it after the exercise.
 
 1. If this account lacks a Terraform state backend, create one from `platform-infra`.
 

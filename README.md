@@ -4,7 +4,7 @@ A DevOps and FinOps portfolio lab that combines infrastructure as code, GitOps d
 
 **AWS EKS is the primary deployment path.** Optional Terraform roots support nonproduction GKE and AKS labs. Local tests and deployment configuration are available; live cloud deployment, recovery and measured cost savings still require a separate lab exercise.
 
-[Architecture](.github/docs/architecture/overview.md) · [Verification and demo](.github/docs/case-study.md) · [v0.9 release notes](.github/docs/releases/v0.9.md) · [GitHub Actions](https://github.com/workwithcrow12-art/cost-aware-gitops-platform/actions) · [MIT License](LICENSE)
+[Architecture](.github/docs/architecture/overview.md) · [Five-minute demo, in Vietnamese](.github/docs/demo.md) · [Verification and demo](.github/docs/case-study.md) · [v0.9 release notes](.github/docs/releases/v0.9.md) · [GitHub Actions](https://github.com/workwithcrow12-art/cost-aware-gitops-platform/actions) · [MIT License](LICENSE) · [NOTICE](NOTICE)
 
 ## Project overview
 
@@ -48,11 +48,11 @@ Nonproduction hosts dev, staging and eligible pull request previews. Production 
 | [finops-toolkit](finops-toolkit/README.md) | OpenCost/Athena reports, FOCUS CSV comparisons by provider/environment/team/currency and read-only Cloud Custodian waste summaries. |
 | [.github](.github/README.md) | Active workflows, architecture decisions, runbooks, release notes and verification evidence. |
 
-This is a **monorepo**. Active automation lives in the root `.github/workflows` directory. Nested component workflows remain standalone examples and do not run here. Run component commands from the directory specified in each component README. Some older documents still describe the earlier multi-repository layout.
+This is a **monorepo**. Active automation lives in the root `.github/workflows` directory. Nested component workflows remain standalone examples and do not run here. Run component commands from the directory specified in each component README. Historical ADR decisions and nested standalone examples retain the earlier multi-repository layout. Automatic promotion, Terraform apply/drift and scheduled waste collection are not active root workflows.
 
 ## Quick start: offline demo
 
-Use Python 3.11 or newer and run these commands from the project root. They read committed synthetic fixtures, need no cloud credentials and send no notifications.
+Use Python 3.11 or newer. From the project root, run `python scripts/portfolio_demo.py` to run the offline checks and save logs plus all three reports in a new directory. See the [five-minute walkthrough, in Vietnamese](.github/docs/demo.md) and [dated verification record](.github/docs/evidence/portfolio-readiness-2026-11-16.md). The individual commands below read committed synthetic fixtures, need no cloud credentials and send no notifications.
 
 ```powershell
 $env:PYTHONPATH = (Resolve-Path finops-toolkit/src).Path
@@ -69,10 +69,12 @@ Example outputs: [weekly report](.github/docs/evidence/weekly-report.md) and [wa
 ## Running a cloud lab
 
 1. Follow the [quick-start guide, in Vietnamese](.github/docs/quick-start.md) to select a cloud, install tools and prepare access.
-2. For AWS, use the [cluster rebuild runbook, in Vietnamese](.github/docs/runbooks/khoi-phuc-cluster-tu-git.md) to prepare state and budget settings, provision nonprod and bootstrap Argo CD.
+2. For AWS, use the [cluster rebuild runbook](.github/docs/runbooks/khoi-phuc-cluster-tu-git.md) to prepare state and budget settings, provision nonprod and bootstrap Argo CD.
 3. Update repository URLs, registry references, IAM/OIDC settings and environment variables for your account. Prepare cluster-specific secrets using the [GitOps instructions](gitops-config/README.md).
 4. Verify application sync, checkout, a failed canary and [rollback](.github/docs/runbooks/rollback-thu-cong.md). Record the deployed revisions and results.
 5. Collect sufficient cost history before enabling live reports. Follow the [teardown instructions](platform-infra/README.md#tear-down), including cleanup of Kubernetes-managed load balancers and persistent volumes.
+
+Read the [AWS lab prerequisites and evidence checklist, in Vietnamese](.github/docs/runbooks/aws-lab-evidence.md) before provisioning. A Free Tier account does not establish that this entire architecture is free; the current zero-cost lab request remains unexecuted pending verification of account eligibility and access.
 
 EKS, EC2, NAT gateways, storage and logging incur charges. AWS Budgets provides alerts; operators still need to monitor spending and remove unused resources.
 
@@ -85,7 +87,7 @@ EKS, EC2, NAT gateways, storage and logging incur charges. AWS Budgets provides 
 | Approvals and publication | Configure branch protection, required reviewers and GitHub environments on GitHub; workflow YAML alone does not enable them. Publishing source/images does not update a running cluster. GitOps base images remain pinned upstream until a deployment change is reviewed. |
 | Canary signal | Basic canary weights target replica ratios rather than exact request percentages. HTTP probes check candidate availability but do not cover the full checkout journey or all user traffic. |
 | Availability and storage | Node groups have fixed node counts. Redis and nonprod Prometheus use ephemeral storage; the production Prometheus profile has a persistent volume. Availability, backups and recovery need verification before use beyond the lab. |
-| Sample application | Payment and email services are mocks. The optional shopping assistant is absent from the base deployment and still needs response-body cleanup before enabling it. |
+| Sample application | Payment and email services are mocks. The optional shopping assistant (`shoppingassistantservice`) is GCP-specific (AlloyDB + Gemini) and intentionally excluded from the base deployment. |
 | Cost data | Weekly comparisons need 14 complete UTC days. The FOCUS reader accepts a documented subset and does not download billing exports. OpenCost and CUR can overlap, so their totals must remain separate. Waste estimates need current rates, usage and ownership checks. |
 | Secrets and security | Seal secrets for the target cluster and keep plaintext credentials out of Git. Image scans reflect the versions and vulnerability database used by that run; dependency updates and future scans remain necessary. |
 
@@ -98,10 +100,10 @@ These are deployment prerequisites or follow-up improvements, not completed feat
 | High | Validate the full flow on real cloud infrastructure | Record provisioning, bootstrap, checkout, failed-canary handling, rollback and teardown with commit IDs. Measure recovery time and compare billing over equivalent workload periods. |
 | High | Establish data durability and recovery | Choose suitable Redis/HA and backup arrangements, test restores and verify metrics retention. Document acceptable data loss and recovery time. |
 | High | Finish environment-specific operations | Verify IAM/OIDC, approval settings, alert destinations and secrets. Document credential rotation and Sealed Secrets key recovery. |
-| Medium | Align older documentation with the monorepo | Review clone instructions, workflow paths and promotion examples; reproduce commands from a fresh checkout. |
+| Medium | Keep documentation and examples aligned as automation evolves | Active guides now describe the monorepo and manual promotion; nested standalone examples and historical verification records are labeled. Recheck hosted workflows when publication behavior changes. |
 | Medium | Validate multi-cloud deployment and billing inputs | Exercise GKE/AKS nonprod labs, reconcile normalized exports against source billing and document checks for duplicate charges or omitted providers. |
-| Medium | Evaluate autoscaling and resource sizing | Measure load and spending before selecting Karpenter, rightsizing or Cost Anomaly Detection; compare results with the fixed-node baseline. |
-| Before enabling | Complete the optional shopping assistant | Fix HTTP response cleanup, add focused verification and review configuration and access before including it in manifests. |
+| Medium | Evaluate autoscaling and resource sizing | Measure load and spending before enabling the opt-in `modules/karpenter` Terraform module, rightsizing or Cost Anomaly Detection; compare results with the fixed-node baseline. |
+| Before enabling | Provision GCP dependencies for the optional shopping assistant | Supply AlloyDB, Secret Manager and Gemini credentials and add hardened Kubernetes manifests before enabling `ENABLE_ASSISTANT=true`. |
 
 Athena provisioning, Kyverno tests, a baseline Grafana dashboard, persistent production Prometheus storage and failure notifications already exist. See the [v0.9 notes](.github/docs/releases/v0.9.md) and [earlier review/remediation comparison, in Vietnamese](.github/docs/comparison-remediation.md) before adding overlapping tooling.
 
@@ -109,7 +111,7 @@ Athena provisioning, Kyverno tests, a baseline Grafana dashboard, persistent pro
 
 - [Portfolio notes and contribution boundaries](.github/docs/portfolio.md)
 - [Verification commands and measurement protocol](.github/docs/case-study.md)
-- [Cost alert runbook, in Vietnamese](.github/docs/runbooks/xu-ly-canh-bao-chi-phi.md)
+- [Cost alert runbook](.github/docs/runbooks/xu-ly-canh-bao-chi-phi.md)
 - [Contributing](.github/CONTRIBUTING.md) and [security reporting](.github/SECURITY.md)
 - [Published releases](https://github.com/workwithcrow12-art/cost-aware-gitops-platform/releases)
 

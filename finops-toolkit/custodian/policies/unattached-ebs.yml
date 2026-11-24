@@ -1,11 +1,28 @@
 policies:
   - name: unattached-ebs
     resource: aws.ebs
-    description: Find currently available EBS volumes created more than seven days ago.
+    description: Find available EBS volumes created over seven days ago with zero read/write I/O over the last seven days.
     filters:
       - State: available
+      - "tag:finops:ignore": absent
       - type: value
         key: CreateTime
         value_type: age
         op: greater-than
         value: 7
+      - type: metrics
+        name: VolumeReadOps
+        statistics: Sum
+        days: 7
+        period: 86400
+        value: 0
+        missing-value: 0
+        op: equal
+      - type: metrics
+        name: VolumeWriteOps
+        statistics: Sum
+        days: 7
+        period: 86400
+        value: 0
+        missing-value: 0
+        op: equal

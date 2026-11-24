@@ -12,36 +12,35 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Define a default value so it's not empty if the builder fails to provide it
 ARG BUILDPLATFORM=linux/amd64
 
-FROM --platform=$BUILDPLATFORM python:3.14.7-slim@sha256:cad9a2c871761c413caa6fdd6441c783451e740a48aaeba60ae62a8b53525ef6 AS base
+FROM --platform=$BUILDPLATFORM python:3.14.10-alpine3.24@sha256:5862d971d1f0ae26b258cefa4e893556b1d3aba81bd2ff30888704ad378bab67 AS base
 
 FROM base AS builder
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
 
-RUN apt-get -qq update \
-    && apt-get install -y --no-install-recommends g++ \
-    && rm -rf /var/lib/apt/lists/*
+RUN apk add --no-cache build-base libffi-dev postgresql-dev
 
-# get packages
 COPY requirements.txt .
-RUN pip install -r requirements.txt
+RUN pip install --no-cache-dir --prefix="/install" -r requirements.txt
 
 FROM base
-# Enable unbuffered logging
-ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PORT="8080"
 
-# get packages
+RUN apk add --no-cache libpq libstdc++ \
+    && addgroup -g 1000 -S app \
+    && adduser -u 1000 -G app -H -D -S -s /sbin/nologin app
+
 WORKDIR /shoppingassistantservice
+COPY --from=builder /install /usr/local
+RUN python -m pip uninstall -y pip \
+    && rm -rf /usr/local/lib/python3.14/ensurepip
 
-# Grab packages from builder
-COPY --from=builder /usr/local/lib/python3.14/ /usr/local/lib/python3.14/
+COPY shoppingassistantservice.py test_shoppingassistantservice.py ./
 
-# Add the application
-COPY . .
-
-# set listen port
-ENV PORT="8080"
+USER 1000:1000
 EXPOSE 8080
-
 ENTRYPOINT ["python", "shoppingassistantservice.py"]

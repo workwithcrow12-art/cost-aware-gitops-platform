@@ -67,12 +67,22 @@ results:
   - policy: require-resource-limits
     rule: compute-resources
     kind: Pod
-    resources: [valid-init]
+    resources: [valid-init, valid-ephemeral]
     result: pass
   - policy: require-image-digest
     rule: pinned-image-digest
     kind: Pod
-    resources: [init-tagged-image]
+    resources: [valid-ephemeral]
+    result: pass
+  - policy: require-cost-labels
+    rule: cost-labels
+    kind: Pod
+    resources: [valid-ephemeral]
+    result: pass
+  - policy: require-image-digest
+    rule: pinned-image-digest
+    kind: Pod
+    resources: [init-tagged-image, ephemeral-tagged-image]
     result: fail
   - policy: require-resource-limits
     rule: autogen-compute-resources

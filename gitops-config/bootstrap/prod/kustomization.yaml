@@ -25,11 +25,11 @@ patches:
       kind: ApplicationSet
       name: platform-addons
     patch: |
+      - op: test
+        path: /spec/generators/0/list/elements/6/name
+        value: kube-downscaler
       - op: remove
         path: /spec/generators/0/list/elements/6
-      - op: add
-        path: /spec/template/spec/sources/0/helm/ignoreMissingValueFiles
-        value: true
       - op: add
         path: /spec/template/spec/sources/0/helm/valueFiles/-
         value: '$values/gitops-config/platform/{{ .name }}/values-prod.yaml'

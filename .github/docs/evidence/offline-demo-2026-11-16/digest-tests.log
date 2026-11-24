@@ -1,0 +1,11 @@
+test_complete_scanned_set_produces_digest_only_replacements (test_scanned_images.ScannedImagesTest.test_complete_scanned_set_produces_digest_only_replacements) ... ok
+test_preview_omits_load_generator (test_scanned_images.ScannedImagesTest.test_preview_omits_load_generator) ... ok
+test_rejects_missing_service (test_scanned_images.ScannedImagesTest.test_rejects_missing_service) ... ok
+test_rejects_non_digest_reference (test_scanned_images.ScannedImagesTest.test_rejects_non_digest_reference) ... ok
+test_rejects_unexpected_artifact_even_with_a_valid_service_file (test_scanned_images.ScannedImagesTest.test_rejects_unexpected_artifact_even_with_a_valid_service_file) ... ok
+test_rejects_wrong_revision (test_scanned_images.ScannedImagesTest.test_rejects_wrong_revision) ... ok
+
+----------------------------------------------------------------------
+Ran 6 tests in 1.839s
+
+OK

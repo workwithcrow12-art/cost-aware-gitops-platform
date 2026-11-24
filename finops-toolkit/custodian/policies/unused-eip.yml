@@ -4,3 +4,4 @@ policies:
     description: Find allocated Elastic IP addresses without an association.
     filters:
       - AssociationId: absent
+      - "tag:finops:ignore": absent

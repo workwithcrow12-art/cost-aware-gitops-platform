@@ -9,11 +9,11 @@ resources:
 results:
   - policy: require-restricted-pods
     rule: restricted
-    resources: [safe]
+    resources: [safe, safe-ephemeral]
     kind: Pod
     result: pass
   - policy: require-restricted-pods
     rule: restricted
-    resources: [root, privileged, unsafe-init]
+    resources: [root, privileged, unsafe-init, unsafe-ephemeral]
     kind: Pod
     result: fail

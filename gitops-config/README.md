@@ -1,14 +1,14 @@
 # GitOps configuration
 
-Argo CD reconciles Online Boutique and the shared platform from this repository. The manifests ship ten application services and Redis. Dev and staging also run a Locust load generator.
+Argo CD reconciles Online Boutique and the shared platform from this monorepo's `gitops-config` directory. The manifests ship ten application services and Redis. Dev and staging also run a Locust load generator.
 
 ## Bootstrap
 
 The [Vietnamese quick-start](https://github.com/workwithcrow12-art/cost-aware-gitops-platform/blob/main/.github/docs/quick-start.md) connects the infrastructure, GitOps, app and reporting repositories. Bootstrap GKE/AKS labs with `bootstrap-argocd.sh nonprod ../gitops-config YOUR_CONTEXT managed`. This selects `bootstrap/nonprod-managed`, which inherits nonprod and leaves metrics-server to the cloud provider. The default profile retains the EKS add-ons.
 
-Push this repository and the app fork to GitHub before bootstrapping. If you publish under a different owner, update the GitOps URLs and revisions in `bootstrap/`, `applicationsets/`, and `platform/*-app.yaml`, plus the preview PR generator owner. Use public packages for the demo or provide registry pull credentials. For a private GitOps repository, register credentials in Argo CD before the root Application can sync.
+Push the monorepo revision that Argo CD will fetch before bootstrapping. If you publish under a different owner, update the GitOps URLs and revisions in `bootstrap/`, `applicationsets/`, and `platform/*-app.yaml`, plus the preview PR generator owner. Use public packages for the demo or provide registry pull credentials. For a private GitOps repository, register credentials in Argo CD before the root Application can sync.
 
-Run the Terraform repository's `scripts/bootstrap-argocd.sh nonprod` or `scripts/bootstrap-argocd.sh prod`. It installs Argo CD through Helm and submits `bootstrap/root-app.yaml` with the matching root path.
+From `platform-infra`, run `scripts/bootstrap-argocd.sh nonprod` or `scripts/bootstrap-argocd.sh prod`. It installs Argo CD through Helm and submits `bootstrap/root-app.yaml` with the matching root path.
 
 | Cluster | Root path | Boutique Applications |
 |---|---|---|
@@ -27,9 +27,9 @@ curl --fail http://localhost:8080/_healthz
 ## Release flow
 
 - The base starts with digest-pinned Google Online Boutique `v0.10.7` images and a digest-pinned Redis image.
-- The `boutique-app` promotion workflow opens a GitOps pull request for dev. It writes the scanned GHCR manifest digests into the dev overlay's `images` entries, keyed by the original upstream image name.
+- Root CI builds and scans images without publishing on `main`. The `v0.9` tag workflow publishes after successful validation of the current `main` SHA. Download and review its `scanned-image-*` digest artifacts, then propose a PR in this monorepo that updates the dev overlay's `images` entries, keyed by the original upstream image name. No active workflow opens this PR automatically.
 - Promote the tested image references into the staging and production overlays through GitOps pull requests. Dev and staging sync automatically. Production syncs on operator approval in Argo CD. GitHub branch protection controls reviewer requirements.
-- The non-production ApplicationSet requires an open app PR with the `preview` label and a reviewed digest record on this repository's `main` at `apps/boutique/preview-releases/<number>/<head-sha>.json`. The Boutique workflow proposes that record when an operator dispatches a preview. Argo CD removes the preview when the PR closes, the label is removed, or the head changes without a matching record. Preview runs one frontend replica and uses the cart service's in-memory store.
+- The non-production ApplicationSet requires an open app PR with the `preview` label and a reviewed digest record on this repository's `main` at `gitops-config/apps/boutique/preview-releases/<number>/<head-sha>.json` relative to the monorepo root. The record contains an `images` list of upstream-name-to-GHCR-digest replacements, as printed by `boutique-app/.github/scripts/scanned-images.py` for `preview`. An operator must prepare it from reviewed scanned records and submit it through a PR; the dispatch workflow remains a standalone example. Argo CD removes the preview when the PR closes, the label is removed, or the head changes without a matching record. Preview runs one frontend replica and uses the cart service's in-memory store.
 
 To undo a promotion, revert its GitOps commit and sync the affected Application. A failed frontend analysis aborts the current rollout. Revert the image change to restore the previous desired version in Git.
 
@@ -81,13 +81,14 @@ Use the Sealed Secrets controller in namespace `sealed-secrets`, service name `s
 
 ```bash
 set -euo pipefail
+CRD_SCHEMA='https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json'
 for path in apps/boutique/overlays/{dev,staging,prod,preview} bootstrap/{nonprod,nonprod-managed,prod}; do
-  kubectl kustomize "$path" | kubeconform -strict -ignore-missing-schemas -summary -kubernetes-version 1.35.0
+  kubectl kustomize "$path" | kubeconform -strict -schema-location default -schema-location "$CRD_SCHEMA" -summary -kubernetes-version 1.35.0
 done
 kyverno test platform/kyverno/tests
 ```
 
-The GitHub workflow also renders the policies, Prometheus rules, reporter and downscaler RBAC. Kyverno tests include partial limits, init containers, Deployment autogeneration and namespace exclusions. Schema validation skips custom resources without a configured schema. A cluster sync verifies controller reconciliation.
+The GitHub workflow also renders the policies, Prometheus rules, reporter, downscaler RBAC and `bootstrap/root-app.yaml`, validating custom resources against `datreeio/CRDs-catalog`. Kyverno tests include partial limits, init containers, ephemeral containers, Deployment autogeneration and namespace exclusions. A cluster sync verifies controller reconciliation.
 
 Grafana loads the baseline **FinOps allocation and availability** dashboard from
 `platform/monitoring/dashboards`. It shows node cost, CPU/memory allocation by
@@ -129,12 +130,14 @@ Publish the updated toolkit image and update the CronJob image before using this
 ## Workload security and credential rotation
 
 All Boutique overlays apply the `restricted` component: UID/GID 1000, nonroot,
-RuntimeDefault seccomp, no privilege escalation, and all capabilities dropped.
+read-only root filesystem, RuntimeDefault seccomp, no privilege escalation, and
+all capabilities dropped (`adservice` mounts an `emptyDir` `/tmp`).
 Redis's data volume uses fsGroup 1000. Kyverno enforces the restricted standard
-in Boutique namespaces, including init containers and future sidecars. CI checks
-both rejection fixtures and the rendered workload templates. Verify new images
-under these permissions before promotion; admission tests cannot establish image
-runtime compatibility.
+in Boutique namespaces, including init containers, ephemeral containers and
+future sidecars. CI checks both rejection fixtures and the rendered workload
+templates against all four Kyverno policies. Verify new images under these
+permissions before promotion; admission tests cannot establish image runtime
+compatibility.
 
 Rotate Redis credentials during a maintenance window using the sealing procedure
 above. Commit and sync the new encrypted Secret, and verify that the controller

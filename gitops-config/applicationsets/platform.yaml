@@ -62,6 +62,7 @@ spec:
           chart: '{{ .chart }}'
           targetRevision: '{{ .version }}'
           helm:
+            ignoreMissingValueFiles: true
             valueFiles:
               - '$values/gitops-config/platform/{{ .name }}/values.yaml'
         - repoURL: https://github.com/workwithcrow12-art/cost-aware-gitops-platform.git

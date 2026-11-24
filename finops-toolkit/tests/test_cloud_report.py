@@ -19,10 +19,13 @@ class CloudReportTests(unittest.TestCase):
             for offset in range(14):
                 start = date(2026, 1, 5) + timedelta(days=offset)
                 rows.append({
-                    "ProviderName": provider, "BillingCurrency": "USD", "BilledCost": cost,
+                    "ProviderName": provider,
+                    "BillingCurrency": "USD",
+                    "BilledCost": cost,
                     "ChargePeriodStart": f"{start}T00:00:00Z",
                     "ChargePeriodEnd": f"{start + timedelta(days=1)}T00:00:00Z",
-                    "ServiceName": "Compute", "Tags": json.dumps({"env": "dev", "team": "shop"}),
+                    "ServiceName": "Compute",
+                    "Tags": json.dumps({"env": "dev", "team": "shop"}),
                 })
         return rows
 
@@ -34,9 +37,12 @@ class CloudReportTests(unittest.TestCase):
                 writer = csv.DictWriter(source, fieldnames=fields or list(self.rows()[0]))
                 writer.writeheader()
                 writer.writerows(rows)
-            with redirect_stdout(output), redirect_stderr(errors), patch(
-                "finops.cli.notify"
-            ) as notify, patch("urllib.request.urlopen", side_effect=AssertionError("offline")):
+            with (
+                redirect_stdout(output),
+                redirect_stderr(errors),
+                patch("finops.cli.notify") as notify,
+                patch("urllib.request.urlopen", side_effect=AssertionError("offline")),
+            ):
                 try:
                     result = main(["cloud-report", "--input", str(path), "--as-of", "2026-01-19"])
                 except SystemExit as exc:
@@ -48,8 +54,11 @@ class CloudReportTests(unittest.TestCase):
         result, output, errors = self.run_report(self.rows())
         self.assertEqual((result, errors), (0, ""))
         self.assertIn("43.75 USD", output)
-        for provider, amount in (("AWS", "8.75"), ("Google Cloud", "14.00"),
-                                 ("Microsoft Azure", "21.00")):
+        for provider, amount in (
+            ("AWS", "8.75"),
+            ("Google Cloud", "14.00"),
+            ("Microsoft Azure", "21.00"),
+        ):
             self.assertIn(f"| {provider} | {amount} USD | {amount} USD | +0.0% |", output)
         self.assertIn("dev", output)
         self.assertIn("shop", output)
@@ -65,17 +74,29 @@ class CloudReportTests(unittest.TestCase):
         self.assertIn("14.00 EUR", output)
         self.assertNotIn("43.75", output)
 
-    def test_missing_provider_day_aborts_without_partial_output(self):
+    def test_missing_provider_or_currency_day_aborts_without_partial_output(self):
         result, output, errors = self.run_report(self.rows()[1:])
         self.assertEqual((result, output), (1, ""))
         self.assertIn("AWS", errors)
         self.assertIn("daily", errors)
 
+        mixed = self.rows()
+        mixed[0]["BillingCurrency"] = "EUR"
+        result2, output2, errors2 = self.run_report(mixed)
+        self.assertEqual((result2, output2), (1, ""))
+        self.assertIn("AWS (EUR)", errors2)
+
     def test_rejects_nonfinite_costs_and_bad_tags(self):
-        for key, value in (("BilledCost", "NaN"), ("BilledCost", "Infinity"),
-                           ("BilledCost", "invalid"), ("Tags", "[]"),
-                           ("Tags", "broken"), ("Tags", '{"env": []}'),
-                           ("BillingCurrency", "US"), ("ProviderName", "")):
+        for key, value in (
+            ("BilledCost", "NaN"),
+            ("BilledCost", "Infinity"),
+            ("BilledCost", "invalid"),
+            ("Tags", "[]"),
+            ("Tags", "broken"),
+            ("Tags", '{"env": []}'),
+            ("BillingCurrency", "US"),
+            ("ProviderName", ""),
+        ):
             with self.subTest(key=key, value=value):
                 rows = self.rows()
                 rows[0][key] = value
@@ -83,11 +104,14 @@ class CloudReportTests(unittest.TestCase):
                 self.assertEqual((result, output), (1, ""))
                 self.assertIn("row 2", errors)
 
-    def test_rejects_ambiguous_charge_intervals(self):
-        for start, end in (("2026-01-05", "2026-01-06"),
-                           ("2026-01-05T00:00:00", "2026-01-06T00:00:00"),
-                           ("2026-01-05T00:00:00Z", "2026-02-05T00:00:00Z"),
-                           ("2026-01-05T23:00:00Z", "2026-01-06T01:00:00Z")):
+    def test_rejects_ambiguous_charge_intervals_including_overlapping_monthly(self):
+        for start, end in (
+            ("2026-01-05", "2026-01-06"),
+            ("2026-01-05T00:00:00", "2026-01-06T00:00:00"),
+            ("2026-01-05T00:00:00Z", "2026-02-05T00:00:00Z"),
+            ("2026-01-01T00:00:00Z", "2026-02-01T00:00:00Z"),
+            ("2026-01-05T23:00:00Z", "2026-01-06T01:00:00Z"),
+        ):
             with self.subTest(start=start, end=end):
                 rows = self.rows()
                 rows[0].update(ChargePeriodStart=start, ChargePeriodEnd=end)
@@ -122,14 +146,33 @@ class CloudReportTests(unittest.TestCase):
         self.assertEqual((result, output), (1, ""))
         self.assertIn("duplicate", errors)
 
-    def test_ignores_rows_outside_the_comparison_windows(self):
+    def test_ignores_single_and_multiday_rows_outside_the_comparison_windows(self):
         rows = self.rows()
-        extra = dict(rows[0], ChargePeriodStart="2026-01-19T00:00:00Z",
-                     ChargePeriodEnd="2026-01-20T00:00:00Z", BilledCost="1000")
-        result, output, _ = self.run_report(rows + [extra])
+        extras = [
+            dict(
+                rows[0],
+                ChargePeriodStart="2026-01-19T00:00:00Z",
+                ChargePeriodEnd="2026-01-20T00:00:00Z",
+                BilledCost="1000",
+            ),
+            dict(
+                rows[0],
+                ChargePeriodStart="2025-12-01T00:00:00Z",
+                ChargePeriodEnd="2026-01-01T00:00:00Z",
+                BilledCost="5000",
+            ),
+            dict(
+                rows[0],
+                ChargePeriodStart="2026-01-19T00:00:00Z",
+                ChargePeriodEnd="2026-02-19T00:00:00Z",
+                BilledCost="5000",
+            ),
+        ]
+        result, output, _ = self.run_report(rows + extras)
         self.assertEqual(result, 0)
         self.assertIn("43.75 USD", output)
         self.assertNotIn("1,000", output)
+        self.assertNotIn("5,000", output)
 
     def render_with_rates(self, rows, rates):
         with tempfile.TemporaryDirectory() as directory:
@@ -183,9 +226,21 @@ class CloudReportTests(unittest.TestCase):
 
     def test_rejects_invalid_rates_without_partial_output(self):
         invalid = ["broken", "[]", "null", '{"EUR":1,"EUR":2}', '{"USD":2}']
-        invalid += [f'{{"EUR":{value}}}' for value in
-                    ("0", "-1", "NaN", "Infinity", "-Infinity", "true", "null",
-                     '"1.1"', "{}", "[]")]
+        invalid += [
+            f'{{"EUR":{value}}}'
+            for value in (
+                "0",
+                "-1",
+                "NaN",
+                "Infinity",
+                "-Infinity",
+                "true",
+                "null",
+                '"1.1"',
+                "{}",
+                "[]",
+            )
+        ]
         invalid += [json.dumps({key: 1}) for key in ("eur", "EU", "E1R", " EUR")]
         for rates in invalid:
             with self.subTest(rates=rates):
@@ -196,7 +251,11 @@ class CloudReportTests(unittest.TestCase):
 
     def test_rejects_missing_rate_for_currency_in_previous_period(self):
         rows = self.rows()
-        rows[0]["BillingCurrency"] = "EUR"
+        for row in rows:
+            if row["ProviderName"] == "Google Cloud":
+                row["BillingCurrency"] = "EUR"
+                if row["ChargePeriodStart"] >= "2026-01-12":
+                    row["BilledCost"] = "0"
         output = io.StringIO()
         with redirect_stdout(output), self.assertRaisesRegex(ValueError, "EUR"):
             self.render_with_rates(rows, "{}")

@@ -1,0 +1,12 @@
+Cost-aware GitOps Platform
+Copyright (c) 2026 Dũng Nguyễn
+
+Platform infrastructure (`platform-infra/`), GitOps manifests and policies (`gitops-config/`),
+FinOps tooling (`finops-toolkit/`), root CI/CD automation (`.github/`), scripts (`scripts/`),
+and original documentation are licensed under the MIT License (see `LICENSE`).
+
+Third-Party Application Code:
+The microservices sample application under `boutique-app/` derives from Google Cloud's
+Online Boutique (`https://github.com/GoogleCloudPlatform/microservices-demo`) and remains
+licensed under the Apache License, Version 2.0 (see `boutique-app/LICENSE`). Original
+copyright headers in `boutique-app/` are retained.

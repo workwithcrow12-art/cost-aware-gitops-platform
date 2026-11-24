@@ -3,102 +3,71 @@ kind: Pod
 metadata:
   name: missing-memory-limit
   namespace: boutique-dev
-  labels:
-    team: boutique
-    env: dev
+  labels: {team: boutique, env: dev}
 spec:
   containers:
-  - name: redis
-    image: redis@sha256:1111111111111111111111111111111111111111111111111111111111111111
-    resources:
-      requests:
-        cpu: 50m
-        memory: 32Mi
-      limits:
-        cpu: 100m
+    - name: redis
+      image: redis@sha256:1111111111111111111111111111111111111111111111111111111111111111
+      resources:
+        requests: {cpu: 50m, memory: 32Mi}
+        limits: {cpu: 100m}
 ---
 apiVersion: v1
 kind: Pod
 metadata:
   name: init-without-resources
   namespace: boutique-dev
-  labels:
-    team: boutique
-    env: dev
+  labels: {team: boutique, env: dev}
 spec:
   containers:
-  - name: redis
-    image: redis@sha256:1111111111111111111111111111111111111111111111111111111111111111
-    resources:
-      requests:
-        cpu: 50m
-        memory: 32Mi
-      limits:
-        cpu: 100m
-        memory: 64Mi
+    - name: redis
+      image: redis@sha256:1111111111111111111111111111111111111111111111111111111111111111
+      resources:
+        requests: {cpu: 50m, memory: 32Mi}
+        limits: {cpu: 100m, memory: 64Mi}
   initContainers:
-  - name: setup
-    image: redis@sha256:1111111111111111111111111111111111111111111111111111111111111111
+    - name: setup
+      image: redis@sha256:1111111111111111111111111111111111111111111111111111111111111111
 ---
 apiVersion: v1
 kind: Pod
 metadata:
   name: valid-init
   namespace: boutique-dev
-  labels:
-    team: boutique
-    env: dev
+  labels: {team: boutique, env: dev}
 spec:
   containers:
-  - name: redis
-    image: redis@sha256:1111111111111111111111111111111111111111111111111111111111111111
-    resources:
-      requests:
-        cpu: 50m
-        memory: 32Mi
-      limits:
-        cpu: 100m
-        memory: 64Mi
+    - name: redis
+      image: redis@sha256:1111111111111111111111111111111111111111111111111111111111111111
+      resources:
+        requests: {cpu: 50m, memory: 32Mi}
+        limits: {cpu: 100m, memory: 64Mi}
   initContainers:
-  - name: setup
-    image: redis@sha256:1111111111111111111111111111111111111111111111111111111111111111
-    resources:
-      requests:
-        cpu: 50m
-        memory: 32Mi
-      limits:
-        cpu: 100m
-        memory: 64Mi
+    - name: setup
+      image: redis@sha256:1111111111111111111111111111111111111111111111111111111111111111
+      resources:
+        requests: {cpu: 50m, memory: 32Mi}
+        limits: {cpu: 100m, memory: 64Mi}
 ---
 apiVersion: v1
 kind: Pod
 metadata:
   name: init-tagged-image
   namespace: boutique-dev
-  labels:
-    team: boutique
-    env: dev
+  labels: {team: boutique, env: dev}
 spec:
   containers:
-  - name: redis
-    image: redis@sha256:1111111111111111111111111111111111111111111111111111111111111111
-    resources:
-      requests:
-        cpu: 50m
-        memory: 32Mi
-      limits:
-        cpu: 100m
-        memory: 64Mi
+    - name: redis
+      image: redis@sha256:1111111111111111111111111111111111111111111111111111111111111111
+      resources:
+        requests: {cpu: 50m, memory: 32Mi}
+        limits: {cpu: 100m, memory: 64Mi}
   initContainers:
-  - name: setup
-    image: redis:latest
-    resources:
-      requests:
-        cpu: 50m
-        memory: 32Mi
-      limits:
-        cpu: 100m
-        memory: 64Mi
+    - name: setup
+      image: redis:latest
+      resources:
+        requests: {cpu: 50m, memory: 32Mi}
+        limits: {cpu: 100m, memory: 64Mi}
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -107,25 +76,17 @@ metadata:
   namespace: boutique-dev
 spec:
   selector:
-    matchLabels:
-      app: valid-deployment
+    matchLabels: {app: valid-deployment}
   template:
     metadata:
-      labels:
-        team: boutique
-        env: dev
-        app: valid-deployment
+      labels: {team: boutique, env: dev, app: valid-deployment}
     spec:
       containers:
-      - name: redis
-        image: redis@sha256:1111111111111111111111111111111111111111111111111111111111111111
-        resources:
-          requests:
-            cpu: 50m
-            memory: 32Mi
-          limits:
-            cpu: 100m
-            memory: 64Mi
+        - name: redis
+          image: redis@sha256:1111111111111111111111111111111111111111111111111111111111111111
+          resources:
+            requests: {cpu: 50m, memory: 32Mi}
+            limits: {cpu: 100m, memory: 64Mi}
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -134,19 +95,47 @@ metadata:
   namespace: boutique-dev
 spec:
   selector:
-    matchLabels:
-      app: deployment-without-limits
+    matchLabels: {app: deployment-without-limits}
   template:
     metadata:
-      labels:
-        team: boutique
-        env: dev
-        app: deployment-without-limits
+      labels: {team: boutique, env: dev, app: deployment-without-limits}
     spec:
       containers:
-      - name: redis
-        image: redis@sha256:1111111111111111111111111111111111111111111111111111111111111111
-        resources:
-          requests:
-            cpu: 50m
-            memory: 32Mi
+        - name: redis
+          image: redis@sha256:1111111111111111111111111111111111111111111111111111111111111111
+          resources:
+            requests: {cpu: 50m, memory: 32Mi}
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: valid-ephemeral
+  namespace: boutique-dev
+  labels: {team: boutique, env: dev}
+spec:
+  containers:
+    - name: redis
+      image: redis@sha256:1111111111111111111111111111111111111111111111111111111111111111
+      resources:
+        requests: {cpu: 50m, memory: 32Mi}
+        limits: {cpu: 100m, memory: 64Mi}
+  ephemeralContainers:
+    - name: debug
+      image: busybox@sha256:2222222222222222222222222222222222222222222222222222222222222222
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: ephemeral-tagged-image
+  namespace: boutique-dev
+  labels: {team: boutique, env: dev}
+spec:
+  containers:
+    - name: redis
+      image: redis@sha256:1111111111111111111111111111111111111111111111111111111111111111
+      resources:
+        requests: {cpu: 50m, memory: 32Mi}
+        limits: {cpu: 100m, memory: 64Mi}
+  ephemeralContainers:
+    - name: debug
+      image: busybox:latest

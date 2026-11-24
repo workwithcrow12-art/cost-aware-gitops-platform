@@ -1,3 +1,0 @@
-# Set an existing maintainer user or team for production in your GitHub organization.
-# /apps/boutique/overlays/prod/ @your-org/platform-maintainers
-# Require two approvals through the protected branch ruleset.
