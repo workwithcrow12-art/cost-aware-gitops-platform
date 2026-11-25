@@ -19,6 +19,13 @@ variable "operator_access_cidrs" {
   description = "Routed operator IPv4 CIDRs for the private Kubernetes API."
   type        = set(string)
   nullable    = false
+
+  validation {
+    condition = length(var.operator_access_cidrs) > 0 && alltrue([
+      for cidr in var.operator_access_cidrs : can(cidrnetmask(cidr)) && !endswith(cidr, "/0")
+    ])
+    error_message = "Provide at least one valid operator IPv4 CIDR and exclude /0 networks."
+  }
 }
 
 variable "operator_role_arn" {

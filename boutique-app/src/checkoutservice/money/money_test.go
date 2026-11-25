@@ -16,14 +16,15 @@ package money
 
 import (
 	"fmt"
-	"reflect"
 	"testing"
 
 	pb "github.com/GoogleCloudPlatform/microservices-demo/src/checkoutservice/genproto"
 )
 
-func mmc(u int64, n int32, c string) pb.Money { return pb.Money{Units: u, Nanos: n, CurrencyCode: c} }
-func mm(u int64, n int32) pb.Money            { return mmc(u, n, "") }
+func mmc(u int64, n int32, c string) *pb.Money {
+	return &pb.Money{Units: u, Nanos: n, CurrencyCode: c}
+}
+func mm(u int64, n int32) *pb.Money { return mmc(u, n, "") }
 
 func TestZeroMultiplierAndInvalidFraction(t *testing.T) {
 	if got := MultiplySlow(mmc(12, 500000000, "USD"), 0); !AreEquals(got, mmc(0, 0, "USD")) {
@@ -39,7 +40,7 @@ func TestZeroMultiplierAndInvalidFraction(t *testing.T) {
 func TestIsValid(t *testing.T) {
 	tests := []struct {
 		name string
-		in   pb.Money
+		in   *pb.Money
 		want bool
 	}{
 		{"valid -/-", mm(-981273891273, -999999999), true},
@@ -63,7 +64,7 @@ func TestIsValid(t *testing.T) {
 func TestIsZero(t *testing.T) {
 	tests := []struct {
 		name string
-		in   pb.Money
+		in   *pb.Money
 		want bool
 	}{
 		{"zero", mm(0, 0), true},
@@ -84,7 +85,7 @@ func TestIsZero(t *testing.T) {
 func TestIsPositive(t *testing.T) {
 	tests := []struct {
 		name string
-		in   pb.Money
+		in   *pb.Money
 		want bool
 	}{
 		{"zero", mm(0, 0), false},
@@ -105,7 +106,7 @@ func TestIsPositive(t *testing.T) {
 func TestIsNegative(t *testing.T) {
 	tests := []struct {
 		name string
-		in   pb.Money
+		in   *pb.Money
 		want bool
 	}{
 		{"zero", mm(0, 0), false},
@@ -125,8 +126,8 @@ func TestIsNegative(t *testing.T) {
 
 func TestAreSameCurrency(t *testing.T) {
 	type args struct {
-		l pb.Money
-		r pb.Money
+		l *pb.Money
+		r *pb.Money
 	}
 	tests := []struct {
 		name string
@@ -150,8 +151,8 @@ func TestAreSameCurrency(t *testing.T) {
 
 func TestAreEquals(t *testing.T) {
 	type args struct {
-		l pb.Money
-		r pb.Money
+		l *pb.Money
+		r *pb.Money
 	}
 	tests := []struct {
 		name string
@@ -176,8 +177,8 @@ func TestAreEquals(t *testing.T) {
 func TestNegate(t *testing.T) {
 	tests := []struct {
 		name string
-		in   pb.Money
-		want pb.Money
+		in   *pb.Money
+		want *pb.Money
 	}{
 		{"zero", mm(0, 0), mm(0, 0)},
 		{"negative", mm(-1, -200), mm(1, 200)},
@@ -212,13 +213,13 @@ func TestMust_panic(t *testing.T) {
 
 func TestSum(t *testing.T) {
 	type args struct {
-		l pb.Money
-		r pb.Money
+		l *pb.Money
+		r *pb.Money
 	}
 	tests := []struct {
 		name    string
 		args    args
-		want    pb.Money
+		want    *pb.Money
 		wantErr error
 	}{
 		{"0+0=0", args{mm(0, 0), mm(0, 0)}, mm(0, 0), nil},
@@ -248,7 +249,7 @@ func TestSum(t *testing.T) {
 			if err != tt.wantErr {
 				t.Errorf("Sum([%v],[%v]): expected err=\"%v\" got=\"%v\"", tt.args.l, tt.args.r, tt.wantErr, err)
 			}
-			if !reflect.DeepEqual(got, tt.want) {
+			if !AreEquals(got, tt.want) {
 				t.Errorf("Sum([%v],[%v]) = %v, want %v", tt.args.l, tt.args.r, got, tt.want)
 			}
 		})

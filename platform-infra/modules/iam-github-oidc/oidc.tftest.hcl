@@ -1,4 +1,11 @@
-mock_provider "aws" {}
+mock_provider "aws" {
+  mock_resource "aws_iam_openid_connect_provider" {
+    override_during = plan
+    defaults = {
+      arn = "arn:aws:iam::123456789012:oidc-provider/token.actions.githubusercontent.com"
+    }
+  }
+}
 
 variables {
   name_prefix = "cost-aware-ci"

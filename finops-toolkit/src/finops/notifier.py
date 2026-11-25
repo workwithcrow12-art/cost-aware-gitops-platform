@@ -54,7 +54,7 @@ def notify(message: str) -> None:
         raise ValueError("NOTIFIER must be slack or telegram")
 
     for payload in payloads:
-        req = Request(
+        req = Request(  # noqa: S310
             url,
             data=json.dumps(payload).encode("utf-8"),
             headers={"Content-Type": "application/json"},
