@@ -2,9 +2,9 @@
 
 Repository workflows, governance files, architecture records, and operational documentation for **Cost-aware GitOps Platform**.
 
-For a technical interview or code walkthrough, start with the [5-minute offline demo](docs/demo.md) and [local readiness verification record](docs/evidence/portfolio-readiness-2026-11-16.md). Before provisioning cloud infrastructure, review the [AWS lab prerequisites and evidence runbook](docs/runbooks/aws-lab-evidence.md).
+For a technical interview or code walkthrough, start with the [5-minute offline demo](demo.md) and [local readiness verification record](evidence/portfolio-readiness-2026-11-16.md). Before provisioning cloud infrastructure, review the [AWS lab prerequisites and evidence runbook](runbooks/aws-lab-evidence.md).
 
-Follow the [quick-start guide](docs/quick-start.md) and the [review comparison and remediation record](docs/comparison-remediation.md) for end-to-end component workflows.
+Follow the [quick-start guide](quick-start.md) and the [review comparison and remediation record](comparison-remediation.md) for end-to-end component workflows.
 
 | Path | Purpose |
 | --- | --- |
