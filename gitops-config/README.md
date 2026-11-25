@@ -4,7 +4,7 @@ Argo CD reconciles Online Boutique and the shared platform from this monorepo's 
 
 ## Bootstrap
 
-The [Vietnamese quick-start](https://github.com/workwithcrow12-art/cost-aware-gitops-platform/blob/main/.github/docs/quick-start.md) connects the infrastructure, GitOps, app and reporting repositories. Bootstrap GKE/AKS labs with `bootstrap-argocd.sh nonprod ../gitops-config YOUR_CONTEXT managed`. This selects `bootstrap/nonprod-managed`, which inherits nonprod and leaves metrics-server to the cloud provider. The default profile retains the EKS add-ons.
+The [quick-start guide](https://github.com/workwithcrow12-art/cost-aware-gitops-platform/blob/main/.github/docs/quick-start.md) connects the infrastructure, GitOps, app and reporting repositories. Bootstrap GKE/AKS labs with `bootstrap-argocd.sh nonprod ../gitops-config YOUR_CONTEXT managed`. This selects `bootstrap/nonprod-managed`, which inherits nonprod and leaves metrics-server to the cloud provider. The default profile retains the EKS add-ons.
 
 Push the monorepo revision that Argo CD will fetch before bootstrapping. If you publish under a different owner, update the GitOps URLs and revisions in `bootstrap/`, `applicationsets/`, and `platform/*-app.yaml`, plus the preview PR generator owner. Use public packages for the demo or provide registry pull credentials. For a private GitOps repository, register credentials in Argo CD before the root Application can sync.
 
@@ -26,10 +26,10 @@ curl --fail http://localhost:8080/_healthz
 
 ## Release flow
 
-- The base starts with digest-pinned Google Online Boutique `v0.10.7` images and a digest-pinned Redis image.
-- Root CI builds and scans images without publishing on `main`. The `v0.9` tag workflow publishes after successful validation of the current `main` SHA. Download and review its `scanned-image-*` digest artifacts, then propose a PR in this monorepo that updates the dev overlay's `images` entries, keyed by the original upstream image name. No active workflow opens this PR automatically.
-- Promote the tested image references into the staging and production overlays through GitOps pull requests. Dev and staging sync automatically. Production syncs on operator approval in Argo CD. GitHub branch protection controls reviewer requirements.
-- The non-production ApplicationSet requires an open app PR with the `preview` label and a reviewed digest record on this repository's `main` at `gitops-config/apps/boutique/preview-releases/<number>/<head-sha>.json` relative to the monorepo root. The record contains an `images` list of upstream-name-to-GHCR-digest replacements, as printed by `boutique-app/.github/scripts/scanned-images.py` for `preview`. An operator must prepare it from reviewed scanned records and submit it through a PR; the dispatch workflow remains a standalone example. Argo CD removes the preview when the PR closes, the label is removed, or the head changes without a matching record. Preview runs one frontend replica and uses the cart service's in-memory store.
+- `apps/boutique/base` retains digest-pinned upstream Google Online Boutique (`v0.10.7`) service image names and a digest-pinned Redis image so Kustomize `images:` overrides match cleanly. All four overlays (`dev`, `staging`, `prod`, and `preview`) pin the published `ghcr.io/workwithcrow12-art/<service>@sha256:...` (`v0.9`) digests (`dev` and `staging` include `loadgenerator`; `prod` and `preview` omit it).
+- Root CI (`ci.yml`) builds and scans images without publishing on `main`. Pushing a `v*` tag triggers `release.yml`, which verifies a green `ci.yml` validation run on `main` (from `push` or `workflow_dispatch`), rebuilds, scans, and publishes all 11 Boutique images plus `finops-toolkit`, creates the GitHub Release, and calls `.github/workflows/promote-images.yml`. `promote-images.yml` runs `boutique-app/.github/scripts/scanned-images.py --apply-gitops gitops-config --finops-record ...`, validates rendered overlays and `platform/finops-reporter` with `kubectl kustomize`, and opens a GitOps promotion pull request. Operators can also trigger `promote-images.yml` manually (`workflow_dispatch`) targeting `all`, `dev`, `staging`, `prod`, or `preview`.
+- Promote reviewed image references across `dev`, `staging`, and `prod` overlays through GitOps pull requests. Dev and staging sync automatically. Production syncs on operator approval in Argo CD. GitHub rulesets/branch protection control status check and reviewer requirements.
+- The non-production ApplicationSet requires an open app PR with the `preview` label and a reviewed digest record on this repository's `main` at `gitops-config/apps/boutique/preview-releases/<number>/<head-sha>.json` relative to the monorepo root. The record contains an `images` list of upstream-name-to-GHCR-digest replacements, as printed by `boutique-app/.github/scripts/scanned-images.py` for `preview`. Argo CD removes the preview when the PR closes, the label is removed, or the head changes without a matching record. Preview runs one frontend replica and uses the cart service's in-memory store.
 
 To undo a promotion, revert its GitOps commit and sync the affected Application. A failed frontend analysis aborts the current rollout. Revert the image change to restore the previous desired version in Git.
 
@@ -70,9 +70,9 @@ GitOps validation scans each deployed Redis digest with Trivy and blocks HIGH or
 
 ## Cost and reporting
 
-- Kyverno enforces `team` and `env` labels, SHA-256 image digests, and CPU and memory requests and limits in `boutique-*` namespaces.
+- Kyverno enforces `team` and `env` labels, SHA-256 image digests, CPU and memory requests and limits, and the Kubernetes `restricted` Pod Security Standard across `boutique-*` and `finops` namespaces.
 - OpenCost queries the in-cluster Prometheus. Use `kubectl -n opencost port-forward svc/opencost 9003:9003` and request `http://localhost:9003/allocation/compute?window=1h&aggregate=namespace,label:team,label:env` after the cluster has collected samples.
-- `platform/finops-reporter` is an opt-in Kustomize app. After publishing the configured `finops-toolkit:v0.9` image, add an Argo CD Application pointing to this path with the `platform` project and destination namespace `finops`. The Monday CronJob writes its report to logs. For AWS billing, the Terraform cost-reporting module supplies `reporter_environment` and `reporter_role_arn`; copy the environment into the CronJob and annotate its ServiceAccount with `eks.amazonaws.com/role-arn`. Configure Slack or Telegram credentials in an optional sealed `finops-reporter` Secret.
+- `platform/finops-reporter` is an opt-in Kustomize app in namespace `finops`, pinned to the published `ghcr.io/workwithcrow12-art/finops-toolkit@sha256:...` (`v0.9`) digest with `team: platform` and `env: shared` cost labels (and updated automatically by `promote-images.yml` via `--finops-record`). Add an Argo CD Application pointing to this path with the `platform` project and destination namespace `finops`. The Monday CronJob writes its report to logs. For AWS billing, the Terraform cost-reporting module supplies `reporter_environment` and `reporter_role_arn`; copy the environment into the CronJob and annotate its ServiceAccount with `eks.amazonaws.com/role-arn`. Configure Slack or Telegram credentials in an optional sealed `finops-reporter` Secret.
 - Grafana, Prometheus and OpenCost ship as Helm add-ons. Prometheus evaluates probe, hourly node-cost and reporter-job alerts. The production profile adds persistent storage; external notification routing needs a sealed destination Secret as described below.
 
 Use the Sealed Secrets controller in namespace `sealed-secrets`, service name `sealed-secrets`, when encrypting secrets. Encrypt separately for each target cluster and add the resulting manifest to the overlay's resources.
@@ -81,14 +81,14 @@ Use the Sealed Secrets controller in namespace `sealed-secrets`, service name `s
 
 ```bash
 set -euo pipefail
-CRD_SCHEMA='https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json'
+CRD_SCHEMA='https://raw.githubusercontent.com/datreeio/CRDs-catalog/04af58d740718c4dc719441bf39fb284c784f4a8/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json'
 for path in apps/boutique/overlays/{dev,staging,prod,preview} bootstrap/{nonprod,nonprod-managed,prod}; do
   kubectl kustomize "$path" | kubeconform -strict -schema-location default -schema-location "$CRD_SCHEMA" -summary -kubernetes-version 1.35.0
 done
 kyverno test platform/kyverno/tests
 ```
 
-The GitHub workflow also renders the policies, Prometheus rules, reporter, downscaler RBAC and `bootstrap/root-app.yaml`, validating custom resources against `datreeio/CRDs-catalog`. Kyverno tests include partial limits, init containers, ephemeral containers, Deployment autogeneration and namespace exclusions. A cluster sync verifies controller reconciliation.
+The GitHub workflow (`gitops.yml`) verifies SHA-256 checksums on downloaded `kubeconform` and `kyverno` archives before extraction, renders the policies, Prometheus rules, `platform/finops-reporter`, downscaler RBAC, and `bootstrap/root-app.yaml` against the commit-pinned `datreeio/CRDs-catalog`, and enforces all four Kyverno policies on rendered Boutique workloads as well as the `finops-reporter` CronJob Pod template. Kyverno tests include FinOps namespace Pods, partial limits, init containers, ephemeral containers, Deployment autogeneration, and namespace exclusions. A cluster sync verifies controller reconciliation.
 
 Grafana loads the baseline **FinOps allocation and availability** dashboard from
 `platform/monitoring/dashboards`. It shows node cost, CPU/memory allocation by
@@ -133,8 +133,8 @@ All Boutique overlays apply the `restricted` component: UID/GID 1000, nonroot,
 read-only root filesystem, RuntimeDefault seccomp, no privilege escalation, and
 all capabilities dropped (`adservice` mounts an `emptyDir` `/tmp`).
 Redis's data volume uses fsGroup 1000. Kyverno enforces the restricted standard
-in Boutique namespaces, including init containers, ephemeral containers and
-future sidecars. CI checks both rejection fixtures and the rendered workload
+in `boutique-*` and `finops` namespaces, including init containers, ephemeral containers and
+future sidecars. CI checks both rejection fixtures and the rendered Boutique and FinOps workload
 templates against all four Kyverno policies. Verify new images under these
 permissions before promotion; admission tests cannot establish image runtime
 compatibility.

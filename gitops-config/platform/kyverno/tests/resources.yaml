@@ -117,3 +117,87 @@ spec:
         limits:
           cpu: 100m
           memory: 64Mi
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: finops-valid
+  namespace: finops
+  labels:
+    team: platform
+    env: shared
+spec:
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 10001
+    runAsGroup: 10001
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+    - name: reporter
+      image: ghcr.io/workwithcrow12-art/finops-toolkit@sha256:7acf0b4eec01a2fc3e73562dac1add7b18836a9982b99a1e54467d66c57a4247
+      securityContext:
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        capabilities:
+          drop:
+            - ALL
+      resources:
+        requests:
+          cpu: 50m
+          memory: 64Mi
+        limits:
+          cpu: 250m
+          memory: 256Mi
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: finops-mutable-tag
+  namespace: finops
+  labels:
+    team: platform
+    env: shared
+spec:
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 10001
+    runAsGroup: 10001
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+    - name: reporter
+      image: ghcr.io/workwithcrow12-art/finops-toolkit:v0.9
+      securityContext:
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        capabilities:
+          drop:
+            - ALL
+      resources:
+        requests:
+          cpu: 50m
+          memory: 64Mi
+        limits:
+          cpu: 250m
+          memory: 256Mi
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: finops-unrestricted
+  namespace: finops
+spec:
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 0
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+    - name: reporter
+      image: ghcr.io/workwithcrow12-art/finops-toolkit:v0.9
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+            - ALL

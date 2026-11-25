@@ -10,10 +10,10 @@ spec:
         any:
           - resources:
               kinds: [Pod]
-              namespaces: [boutique-*]
+              namespaces: [boutique-*, finops]
       validate:
         failureAction: Enforce
-        message: Boutique pods must meet the Kubernetes restricted Pod Security Standard.
+        message: Application and FinOps pods must meet the Kubernetes restricted Pod Security Standard.
         podSecurity:
           level: restricted
           # Pin a standard supported by the installed Kyverno CLI/controller.

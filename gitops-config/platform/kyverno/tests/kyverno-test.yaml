@@ -6,6 +6,7 @@ policies:
   - ../policies/require-cost-labels.yaml
   - ../policies/require-resource-limits.yaml
   - ../policies/require-image-digest.yaml
+  - ../policies/require-restricted-pods.yaml
 resources:
   - resources.yaml
   - resources-edge-cases.yaml
@@ -15,30 +16,37 @@ results:
     kind: Pod
     resources:
       - valid
+      - finops-valid
+      - finops-mutable-tag
     result: pass
   - policy: require-cost-labels
     rule: cost-labels
     kind: Pod
     resources:
       - missing-cost-labels
+      - finops-unrestricted
     result: fail
   - policy: require-resource-limits
     rule: compute-resources
     kind: Pod
     resources:
       - valid
+      - finops-valid
+      - finops-mutable-tag
     result: pass
   - policy: require-resource-limits
     rule: compute-resources
     kind: Pod
     resources:
       - missing-resources
+      - finops-unrestricted
     result: fail
   - policy: require-image-digest
     rule: pinned-image-digest
     kind: Pod
     resources:
       - valid
+      - finops-valid
     result: pass
   - policy: require-image-digest
     rule: pinned-image-digest
@@ -46,6 +54,8 @@ results:
     resources:
       - latest-image
       - ordinary-tag
+      - finops-mutable-tag
+      - finops-unrestricted
     result: fail
   - policy: require-image-digest
     rule: pinned-image-digest
@@ -55,6 +65,25 @@ results:
     result: fail
   - policy: require-image-digest
     rule: pinned-image-digest
+    kind: Pod
+    resources:
+      - outside-boutique
+    result: skip
+  - policy: require-restricted-pods
+    rule: restricted
+    kind: Pod
+    resources:
+      - finops-valid
+      - finops-mutable-tag
+    result: pass
+  - policy: require-restricted-pods
+    rule: restricted
+    kind: Pod
+    resources:
+      - finops-unrestricted
+    result: fail
+  - policy: require-restricted-pods
+    rule: restricted
     kind: Pod
     resources:
       - outside-boutique

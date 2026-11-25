@@ -30,20 +30,20 @@ and the CI that builds, scans and ships it.
 
 ```text
 pull request / main push → service tests → container builds → HIGH/CRITICAL scan gate
-v* tag → require successful validation of current main → rebuild, scan and publish → release
-deployment → review published digest records → GitOps PR → Argo CD sync
+v* tag → require successful validation of current main → rebuild, scan and publish → release + promote-images PR
+deployment → review GitOps digest promotion PR → merge → Argo CD sync
 ```
 
-Active workflows are at the monorepo root: `.github/workflows/services.yml`, `images.yml`, `ci.yml` and `release.yml`. Nested workflows are standalone examples and do not run here. Automatic dev promotion and dispatched preview publication have not been ported to root workflows. A push to `main` validates images with `publish: false`.
+Active application workflows live at the monorepo root: `.github/workflows/services.yml`, `images.yml`, `ci.yml`, `release.yml`, and `promote-images.yml`. Nested workflows under `boutique-app/` are standalone examples and do not run here. A push to `main` validates images with `publish: false`.
 
-The matrix builds all 11 images from one revision, including the optional load generator. Trivy scans the local Docker image before publication and blocks HIGH or CRITICAL vulnerabilities. The publication job retains a manifest digest record for each service. The GitOps base remains on pinned upstream images until a deployment PR changes it; SHA tags alone do not update a cluster.
+The matrix builds all 11 images from one revision, including the optional load generator. Trivy scans the local Docker image before publication and blocks HIGH or CRITICAL vulnerabilities. The publication job retains a manifest digest record (`scanned-image-<service>`) for each service, while `release.yml` also publishes and records `scanned-image-finops-toolkit`. `gitops-config/apps/boutique/base` retains pinned upstream image names so Kustomize `images:` overrides in `overlays/{dev,staging,prod,preview}` map cleanly to immutable `ghcr.io/workwithcrow12-art/<service>@sha256:...` (`v0.9`) digests; SHA tags alone never mutate a cluster.
 
 ## Connect GitHub and GitOps
 
-1. Protect `main` in the monorepo and require review of workflow, bootstrap and deployment changes. Active workflows do not need a cross-repository `GITOPS_TOKEN` or a `gitops-promotion` environment; those settings belong only to the nested examples.
-2. Give clusters pull access to GHCR packages. The lab assumes public packages; newly published packages may need their visibility changed, or private-registry credentials configured.
-3. After successful `v0.9` publication, download the `scanned-image-*` artifacts before their three-day retention expires. Check that all records identify the intended revision. From the monorepo root, run `python boutique-app/.github/scripts/scanned-images.py --help` for helper inputs. It validates records and prints image replacements; it does not open a PR.
-4. Propose reviewed digests in `gitops-config/apps/boutique/overlays/dev/kustomization.yaml`, then promote the tested references to staging and production in separate PRs. Preview manifests are configured, but the operator must prepare and review the matching release record. No active workflow generates it; see the GitOps README for record paths and cleanup conditions.
+1. Protect `main` in the monorepo with `Release validation` status checks and review workflow, bootstrap, and deployment changes. Active monorepo workflows use scoped `GITHUB_TOKEN` permissions (`contents: write`, `pull-requests: write`, `actions: read` in `promote-images.yml`) and do not require a cross-repository `GITOPS_TOKEN` or a `gitops-promotion` environment.
+2. Give clusters pull access to GHCR packages. The lab uses public packages; newly published packages may need their visibility set to public, or private-registry pull credentials configured.
+3. After `release.yml` finishes publishing a `v*` tag, its `promote` job automatically invokes `.github/workflows/promote-images.yml` to download the `scanned-image-*` artifacts, run `boutique-app/.github/scripts/scanned-images.py --apply-gitops gitops-config --finops-record ...`, validate overlays and `platform/finops-reporter` with `kubectl kustomize`, and open a GitOps promotion PR. You can also trigger `promote-images.yml` via `workflow_dispatch` for `all`, `dev`, `staging`, `prod`, or `preview` before the three-day artifact retention expires.
+4. From the monorepo root, `python boutique-app/.github/scripts/scanned-images.py <records> <owner> <revision> <dev|staging|prod|preview>` prints backwards-compatible `{"images": [...]}` JSON replacements (`dev` and `staging` include `loadgenerator`; `prod` and `preview` omit it), and `--apply-gitops gitops-config` (with optional `--finops-record`) updates the overlay `kustomization.yaml` `images:` block and `gitops-config/platform/finops-reporter/cronjob.yaml` deterministically in place. Preview deployments still require an open PR labeled `preview` and a reviewed record under `gitops-config/apps/boutique/preview-releases/<number>/<head-sha>.json`; see the GitOps README for record paths and cleanup conditions.
 
 ## Local development
 

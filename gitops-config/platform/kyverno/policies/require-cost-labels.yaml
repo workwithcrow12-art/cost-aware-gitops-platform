@@ -13,6 +13,7 @@ spec:
                 - Pod
               namespaces:
                 - boutique-*
+                - finops
       validate:
         failureAction: Enforce
         message: Pods must declare team and env labels for cost allocation.
