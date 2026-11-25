@@ -29,34 +29,34 @@ replacements:
 images:
   - name: us-central1-docker.pkg.dev/online-boutique-ci/microservices-demo/adservice
     newName: ghcr.io/workwithcrow12-art/adservice
-    digest: sha256:c71032e03cb5cc0ce2cc27b99c37175d980074c63083bda2e733187cf52d178c
+    digest: sha256:5e111118d5c842ac3ce93700da2336365ce0fc5caf9292dc3daa9b9b142e069e
   - name: us-central1-docker.pkg.dev/online-boutique-ci/microservices-demo/cartservice
     newName: ghcr.io/workwithcrow12-art/cartservice
-    digest: sha256:f7b3ea31210e51d963def379cc95934ddc35acf9652cb1d25eb98e492f6bcad8
+    digest: sha256:d6759d8a0aeb110ad3ea7ed8969474284a39f66000fd7a3f80329bbff9841da7
   - name: us-central1-docker.pkg.dev/online-boutique-ci/microservices-demo/checkoutservice
     newName: ghcr.io/workwithcrow12-art/checkoutservice
-    digest: sha256:220b4cac7e8e69d9d15bfc0744394e382adea54a14c6db12039b2040c420f8f9
+    digest: sha256:42b0cbf2ae4d5c767c9364469f9c9dfac2e3dba5963e1e465a3ca9ef67011423
   - name: us-central1-docker.pkg.dev/online-boutique-ci/microservices-demo/currencyservice
     newName: ghcr.io/workwithcrow12-art/currencyservice
-    digest: sha256:45a1310f3bcddc48763b54218dbf4d4df79ee92fc37ad57a0dbc26951b5251d2
+    digest: sha256:a76f8bce97654342ede20df43fc2e13febbecc6584898e564bb0ad3bb064a1dc
   - name: us-central1-docker.pkg.dev/online-boutique-ci/microservices-demo/emailservice
     newName: ghcr.io/workwithcrow12-art/emailservice
-    digest: sha256:ee1c993caf51d2e3bb757159cbdd9e7a9f976d91535f10b5349e1ec7292a7813
+    digest: sha256:a55bea307825e54200b44ad5d839ce940d06cb080fb61801c8d33d8e9f1412ce
   - name: us-central1-docker.pkg.dev/online-boutique-ci/microservices-demo/frontend
     newName: ghcr.io/workwithcrow12-art/frontend
-    digest: sha256:092501a03f2bc3a4265a0ba336da285a7d9f255d8d44ce5c80ba3b042eb82a8e
+    digest: sha256:5f2ebef127eeea86cd845d6b9606be23bb84762a5b99f14baa699fdbea6db97b
   - name: us-central1-docker.pkg.dev/online-boutique-ci/microservices-demo/loadgenerator
     newName: ghcr.io/workwithcrow12-art/loadgenerator
-    digest: sha256:876c0efa20dee7c364e221655832e70000f4211046afdabfe8da0893e359e992
+    digest: sha256:b967ff626802ec0717129aa45ea8864e8ac630a88867f6d24e83135c193af9ce
   - name: us-central1-docker.pkg.dev/online-boutique-ci/microservices-demo/paymentservice
     newName: ghcr.io/workwithcrow12-art/paymentservice
-    digest: sha256:7ff5687d368e95633f3451b1760e310d81a7d52a88fc27e1d94650d024359bc4
+    digest: sha256:fa2b6be427b1bc5603c03bc897f01da72de79f43b132a55f8326dac5ee5d71a4
   - name: us-central1-docker.pkg.dev/online-boutique-ci/microservices-demo/productcatalogservice
     newName: ghcr.io/workwithcrow12-art/productcatalogservice
-    digest: sha256:cc63b1d8a0fdfdd1400b8cfe32c7a5eb738258b713f2b77b34bc421e42792f90
+    digest: sha256:758cae865bd5290002803bb66667b945216dd2c7c925b63a52d315b74e8f6959
   - name: us-central1-docker.pkg.dev/online-boutique-ci/microservices-demo/recommendationservice
     newName: ghcr.io/workwithcrow12-art/recommendationservice
-    digest: sha256:cedc1bad1202c6ae2ef7970bbe2ab70165526e456bc93584a4021c5806b555ca
+    digest: sha256:b4e2f5473541cddf9ee63a0784f5710e0f44cec29d4eb9dc2b79f8704305fb48
   - name: us-central1-docker.pkg.dev/online-boutique-ci/microservices-demo/shippingservice
     newName: ghcr.io/workwithcrow12-art/shippingservice
-    digest: sha256:f02be45c28ca4af8b8cbaba9ac48abc141811062a053d61c0a05f9077b0a294b
+    digest: sha256:7315ee0d28be90e5b0e0139b83c5eeabbded24c62628ab75c431033ff70cd059
