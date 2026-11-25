@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "finops-toolkit"
-version = "0.9.0"
+version = "1.0.0"
 description = "Weekly cloud cost reports and read-only waste estimates"
 readme = "README.md"
 requires-python = ">=3.11"

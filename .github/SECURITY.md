@@ -4,8 +4,8 @@
 
 | Version | Supported |
 | --- | --- |
-| `0.9.x` / `main` | Yes |
-| `< 0.9` | No |
+| `1.0.x` / `main` | Yes |
+| `< 1.0` | No |
 
 ## Scope
 
