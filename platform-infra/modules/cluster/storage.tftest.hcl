@@ -48,17 +48,38 @@ run "private_cluster_imdsv2_and_storage_disabled_by_default" {
     condition = (
       length(aws_eks_addon.ebs_csi) == 0 &&
       length(aws_iam_role.ebs_csi) == 0 &&
+      length(aws_eks_access_entry.break_glass) == 0 &&
+      length(aws_eks_access_policy_association.break_glass) == 0 &&
       aws_eks_cluster.this.vpc_config[0].endpoint_private_access &&
       !aws_eks_cluster.this.vpc_config[0].endpoint_public_access &&
       !aws_eks_cluster.this.access_config[0].bootstrap_cluster_creator_admin_permissions &&
       aws_eks_access_policy_association.operator.principal_arn == var.operator_role_arn &&
+      aws_eks_access_policy_association.operator.policy_arn == "arn:aws:eks::aws:cluster-access-policy/AmazonEKSViewPolicy" &&
       aws_vpc_security_group_ingress_rule.operator["10.2.1.0/24"].to_port == 443 &&
       jsondecode(aws_eks_addon.vpc_cni.configuration_values).enableNetworkPolicy == "true" &&
       !contains(keys(aws_iam_role_policy_attachment.nodes), "AmazonEKS_CNI_Policy") &&
       aws_launch_template.system.metadata_options[0].http_tokens == "required" &&
       aws_launch_template.system.metadata_options[0].http_put_response_hop_limit == 1
     )
-    error_message = "Cluster must enforce private API, explicit operator RBAC, VPC CNI policy, IMDSv2 hop-limit 1, and disabled CSI by default."
+    error_message = "Cluster must enforce private API, default AmazonEKSViewPolicy operator RBAC, no break-glass admin by default, VPC CNI policy, IMDSv2 hop-limit 1, and disabled CSI by default."
+  }
+}
+
+run "break_glass_role_grants_cluster_admin_and_edit_operator_policy" {
+  command = plan
+  variables {
+    operator_access_policy = "AmazonEKSEditPolicy"
+    break_glass_role_arn   = "arn:aws:iam::123456789012:role/ClusterBreakGlass"
+  }
+  assert {
+    condition = (
+      aws_eks_access_policy_association.operator.policy_arn == "arn:aws:eks::aws:cluster-access-policy/AmazonEKSEditPolicy" &&
+      length(aws_eks_access_entry.break_glass) == 1 &&
+      aws_eks_access_entry.break_glass[0].principal_arn == "arn:aws:iam::123456789012:role/ClusterBreakGlass" &&
+      aws_eks_access_policy_association.break_glass[0].policy_arn == "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy" &&
+      aws_eks_access_policy_association.break_glass[0].access_scope[0].type == "cluster"
+    )
+    error_message = "Break-glass role must grant AmazonEKSClusterAdminPolicy at cluster scope while routine operator stays scoped."
   }
 }
 
@@ -90,4 +111,20 @@ run "reject_open_world_operator_cidr" {
     operator_access_cidrs = ["0.0.0.0/0"]
   }
   expect_failures = [var.operator_access_cidrs]
+}
+
+run "reject_admin_routine_operator_policy" {
+  command = plan
+  variables {
+    operator_access_policy = "AmazonEKSClusterAdminPolicy"
+  }
+  expect_failures = [var.operator_access_policy]
+}
+
+run "reject_duplicate_break_glass_role" {
+  command = plan
+  variables {
+    break_glass_role_arn = "arn:aws:iam::123456789012:role/ClusterOperator"
+  }
+  expect_failures = [var.break_glass_role_arn]
 }

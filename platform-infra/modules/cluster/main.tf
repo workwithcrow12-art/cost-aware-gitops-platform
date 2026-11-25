@@ -117,6 +117,25 @@ resource "aws_eks_access_entry" "operator" {
 resource "aws_eks_access_policy_association" "operator" {
   cluster_name  = aws_eks_cluster.this.name
   principal_arn = aws_eks_access_entry.operator.principal_arn
+  policy_arn    = "arn:${data.aws_partition.current.partition}:eks::aws:cluster-access-policy/${var.operator_access_policy}"
+
+  access_scope {
+    type = "cluster"
+  }
+}
+
+resource "aws_eks_access_entry" "break_glass" {
+  count = var.break_glass_role_arn == null ? 0 : 1
+
+  cluster_name  = aws_eks_cluster.this.name
+  principal_arn = var.break_glass_role_arn
+}
+
+resource "aws_eks_access_policy_association" "break_glass" {
+  count = var.break_glass_role_arn == null ? 0 : 1
+
+  cluster_name  = aws_eks_cluster.this.name
+  principal_arn = aws_eks_access_entry.break_glass[0].principal_arn
   policy_arn    = "arn:${data.aws_partition.current.partition}:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
 
   access_scope {
