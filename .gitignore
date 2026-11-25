@@ -8,6 +8,7 @@ Thumbs.db
 .scratch/
 .agents/
 .codex/
+AGENTS.md
 **/modernize/
 
 # Local secrets and credentials
