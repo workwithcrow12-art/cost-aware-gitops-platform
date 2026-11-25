@@ -278,9 +278,10 @@ def build_override_hcl(env_name: str, stub_base_url: str) -> str:
         return (
             'provider "azurerm" {\n'
             "  features {}\n"
-            "  skip_provider_registration = true\n"
-            "  use_msi                    = true\n"
-            f'  msi_endpoint               = "{stub_base_url}/msi/token"\n'
+            '  resource_provider_registrations = "none"\n'
+            "  use_cli                         = false\n"
+            "  use_msi                         = true\n"
+            f'  msi_endpoint                    = "{stub_base_url}/msi/token"\n'
             "}\n"
         )
     raise ValueError(f"Unsupported environment: {env_name}")
@@ -415,6 +416,8 @@ def _sanitized_terraform_env() -> dict[str, str]:
             "AWS_ACCESS_KEY_ID": "mock",
             "AWS_SECRET_ACCESS_KEY": "mock",
             "AWS_EC2_METADATA_DISABLED": "true",
+            "ARM_PROVIDER_ENHANCED_VALIDATION": "false",
+            "ARM_USE_CLI": "false",
             "CHECKPOINT_DISABLE": "1",
             "TF_IN_AUTOMATION": "1",
         }

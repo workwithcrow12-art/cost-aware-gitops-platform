@@ -125,9 +125,35 @@ class OfflinePlanStagingAndExecutionTests(unittest.TestCase):
             self.assertIn('access_token = "ya29.offline-ci-mock-token"', gke_override)
 
             aks_override = (staged["aks"] / "_ci_offline_override.tf").read_text(encoding="utf-8")
-            self.assertIn("use_msi                    = true", aks_override)
-            self.assertIn('msi_endpoint               = "http://127.0.0.1:43210/msi/token"', aks_override)
-            self.assertIn("skip_provider_registration = true", aks_override)
+            self.assertIn('resource_provider_registrations = "none"', aks_override)
+            self.assertIn("use_cli                         = false", aks_override)
+            self.assertIn("use_msi                         = true", aks_override)
+            self.assertIn('msi_endpoint                    = "http://127.0.0.1:43210/msi/token"', aks_override)
+            self.assertNotIn("skip_provider_registration", aks_override)
+
+    def test_aks_override_and_sanitized_env_disable_live_arm_discovery(self) -> None:
+        aks_override = offline_plan_check.build_override_hcl("aks", "http://127.0.0.1:43210")
+        self.assertIn('resource_provider_registrations = "none"', aks_override)
+        self.assertIn("use_cli                         = false", aks_override)
+        self.assertIn("use_msi                         = true", aks_override)
+        self.assertIn('msi_endpoint                    = "http://127.0.0.1:43210/msi/token"', aks_override)
+        self.assertNotIn("skip_provider_registration", aks_override)
+
+        ambient = {
+            "PATH": "/usr/bin",
+            "ARM_SKIP_PROVIDER_REGISTRATION": "true",
+            "ARM_CLIENT_SECRET": "super-secret",
+            "AZURE_CONFIG_DIR": "/tmp/azure",
+        }
+        with mock.patch.dict("offline_plan_check.os.environ", ambient, clear=True):
+            env = offline_plan_check._sanitized_terraform_env()
+
+        self.assertEqual(env["PATH"], "/usr/bin")
+        self.assertNotIn("ARM_SKIP_PROVIDER_REGISTRATION", env)
+        self.assertNotIn("ARM_CLIENT_SECRET", env)
+        self.assertNotIn("AZURE_CONFIG_DIR", env)
+        self.assertEqual(env["ARM_PROVIDER_ENHANCED_VALIDATION"], "false")
+        self.assertEqual(env["ARM_USE_CLI"], "false")
 
     def test_reuses_initialized_provider_directory_when_present(self) -> None:
         with tempfile.TemporaryDirectory() as fake_infra_str, tempfile.TemporaryDirectory() as stage_str:
@@ -152,6 +178,9 @@ class OfflinePlanStagingAndExecutionTests(unittest.TestCase):
             calls.append(args)
             self.assertEqual(env["AWS_ACCESS_KEY_ID"], "mock")
             self.assertEqual(env["AWS_EC2_METADATA_DISABLED"], "true")
+            self.assertEqual(env["ARM_PROVIDER_ENHANCED_VALIDATION"], "false")
+            self.assertEqual(env["ARM_USE_CLI"], "false")
+            self.assertNotIn("ARM_SKIP_PROVIDER_REGISTRATION", env)
             if "show" in args:
                 payload = {
                     "format_version": "1.2",
