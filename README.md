@@ -15,7 +15,7 @@ Reference DevOps and FinOps platform lab connecting **private AWS EKS infrastruc
 
 - **Infrastructure & Governance:** Separate `nonprod` (Spot, 1 NAT) and `prod` (On-Demand, configurable `nat_per_az` 3-NAT HA, mandatory monthly AWS Budget) private EKS environments, least-privilege `AmazonEKSViewPolicy` operator access with optional `break_glass_role_arn` (`AmazonEKSClusterAdminPolicy`), encrypted S3 state, GitHub OIDC, mocked `terraform test` suites, offline Terraform plan `conftest test` cost-tag gates (`env`, `team`, `project`, `owner`), and Infracost PR summaries.
 - **Supply-Chain & Policy Gates:** Multi-language CI across all Boutique services, SHA-verified `kubeconform` + `kyverno` CLI gates, Trivy `HIGH`/`CRITICAL` image blocking, automated/manual `@sha256` digest promotion PRs (`promote-images.yml`), default-deny `NetworkPolicy`, Sealed Secrets, and Kyverno `restricted` pod security + digest/resource/cost-label enforcement across both `boutique-*` and `finops` namespaces.
-- **Controlled GitOps Delivery:** Argo CD `ApplicationSet` environments (`dev`, `staging`, PR `preview`, manual-sync `prod`) pinned to verified `v0.9` GHCR `@sha256` digests, scheduled weekday off-hours scaling (`GoKubeDownscaler`) in nonprod, and Prometheus-probed Argo Rollouts frontend canaries.
+- **Controlled GitOps Delivery:** Argo CD `ApplicationSet` environments (`dev`, `staging`, PR `preview`, manual-sync `prod`) pinned to verified `v1.0.0` GHCR `@sha256` digests, scheduled weekday off-hours scaling (`GoKubeDownscaler`) in nonprod, and Prometheus-probed Argo Rollouts frontend canaries.
 - **Data-Safe FinOps CLI (`finops-toolkit`) & Cloud Lab Kit:**
   - Keeps **OpenCost workload allocations** and **AWS CUR billing** separate instead of summing overlapping totals.
   - Rejects incomplete 14-day UTC comparison windows rather than treating missing billing days as `$0`.
@@ -49,10 +49,10 @@ Nonproduction hosts `dev`, `staging`, and eligible pull request `preview` deploy
 | Component | Responsibilities |
 | --- | --- |
 | [platform-infra](platform-infra/README.md) | Private EKS infrastructure, optional GKE/AKS labs, S3 state, mandatory `prod` AWS Budgets, least-privilege + break-glass EKS access, GitHub OIDC, Athena/Glue/IRSA, opt-in Karpenter, and offline Terraform plan policy checks. |
-| [gitops-config](gitops-config/README.md) | Argo CD/`ApplicationSet` roots, Kustomize overlays pinned to `v0.9` GHCR `@sha256` digests, Helm add-ons, `finops-reporter`, frontend canaries, Kyverno (`boutique-*` & `finops`), network policies, nonprod downscaling, and observability. |
+| [gitops-config](gitops-config/README.md) | Argo CD/`ApplicationSet` roots, Kustomize overlays pinned to `v1.0.0` GHCR `@sha256` digests, Helm add-ons, `finops-reporter`, frontend canaries, Kyverno (`boutique-*` & `finops`), network policies, nonprod downscaling, and observability. |
 | [boutique-app](boutique-app/README.md) | Online Boutique source, multi-language service tests, image build/scan/publish scripts, `scanned-images.py` overlay digest promoter, and storefront checkout smoke tests. |
 | [finops-toolkit](finops-toolkit/README.md) | OpenCost/Athena weekly comparisons, FOCUS 1.0/1.1 CSV multi-cloud reports by provider/environment/team/currency, and read-only Cloud Custodian waste summaries. |
-| [.github](.github/README.md) & `scripts/` | Active monorepo CI/release/promotion/OIDC workflows, ADRs, English runbooks, release notes, offline portfolio demo, and Cloud Lab Readiness Kit. |
+| [.github](.github/docs/github-directory.md) & `scripts/` | Active monorepo CI/release/promotion/OIDC workflows, ADRs, English runbooks, release notes, offline portfolio demo, and Cloud Lab Readiness Kit. |
 
 This is a **monorepo** where all active automation lives in root `.github/workflows/`: continuous validation (`ci.yml`, `finops.yml`, `services.yml`, `terraform.yml`, `gitops.yml`, `images.yml`), tagged GHCR publication + automated/manual GitOps digest promotion PRs (`release.yml`, `promote-images.yml`), and opt-in OIDC operational workflows (`terraform-apply.yml`, `terraform-drift.yml`, `custodian-weekly.yml`, which stay gated until AWS OIDC roles and repository variables are configured). Dormant nested `.github/workflows` directories were retired in favor of root monorepo workflows.
 
