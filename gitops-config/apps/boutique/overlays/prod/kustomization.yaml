@@ -32,3 +32,34 @@ replacements:
         options:
           delimiter: "."
           index: 1
+images:
+  - name: us-central1-docker.pkg.dev/online-boutique-ci/microservices-demo/adservice
+    newName: ghcr.io/workwithcrow12-art/adservice
+    digest: sha256:c71032e03cb5cc0ce2cc27b99c37175d980074c63083bda2e733187cf52d178c
+  - name: us-central1-docker.pkg.dev/online-boutique-ci/microservices-demo/cartservice
+    newName: ghcr.io/workwithcrow12-art/cartservice
+    digest: sha256:f7b3ea31210e51d963def379cc95934ddc35acf9652cb1d25eb98e492f6bcad8
+  - name: us-central1-docker.pkg.dev/online-boutique-ci/microservices-demo/checkoutservice
+    newName: ghcr.io/workwithcrow12-art/checkoutservice
+    digest: sha256:220b4cac7e8e69d9d15bfc0744394e382adea54a14c6db12039b2040c420f8f9
+  - name: us-central1-docker.pkg.dev/online-boutique-ci/microservices-demo/currencyservice
+    newName: ghcr.io/workwithcrow12-art/currencyservice
+    digest: sha256:45a1310f3bcddc48763b54218dbf4d4df79ee92fc37ad57a0dbc26951b5251d2
+  - name: us-central1-docker.pkg.dev/online-boutique-ci/microservices-demo/emailservice
+    newName: ghcr.io/workwithcrow12-art/emailservice
+    digest: sha256:ee1c993caf51d2e3bb757159cbdd9e7a9f976d91535f10b5349e1ec7292a7813
+  - name: us-central1-docker.pkg.dev/online-boutique-ci/microservices-demo/frontend
+    newName: ghcr.io/workwithcrow12-art/frontend
+    digest: sha256:092501a03f2bc3a4265a0ba336da285a7d9f255d8d44ce5c80ba3b042eb82a8e
+  - name: us-central1-docker.pkg.dev/online-boutique-ci/microservices-demo/paymentservice
+    newName: ghcr.io/workwithcrow12-art/paymentservice
+    digest: sha256:7ff5687d368e95633f3451b1760e310d81a7d52a88fc27e1d94650d024359bc4
+  - name: us-central1-docker.pkg.dev/online-boutique-ci/microservices-demo/productcatalogservice
+    newName: ghcr.io/workwithcrow12-art/productcatalogservice
+    digest: sha256:cc63b1d8a0fdfdd1400b8cfe32c7a5eb738258b713f2b77b34bc421e42792f90
+  - name: us-central1-docker.pkg.dev/online-boutique-ci/microservices-demo/recommendationservice
+    newName: ghcr.io/workwithcrow12-art/recommendationservice
+    digest: sha256:cedc1bad1202c6ae2ef7970bbe2ab70165526e456bc93584a4021c5806b555ca
+  - name: us-central1-docker.pkg.dev/online-boutique-ci/microservices-demo/shippingservice
+    newName: ghcr.io/workwithcrow12-art/shippingservice
+    digest: sha256:f02be45c28ca4af8b8cbaba9ac48abc141811062a053d61c0a05f9077b0a294b

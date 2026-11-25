@@ -19,7 +19,7 @@ output "aws_region" {
 }
 
 output "budget_name" {
-  value = var.budget == null ? null : module.budget[0].budget_name
+  value = module.budget.budget_name
 }
 
 output "athena_workgroup" {

@@ -1,3 +1,10 @@
+# GitHub Ruleset guidance for solo-maintainer vs multi-maintainer operation:
+# - Require the `Release validation` status checks to pass before merging to `main`.
+# - While this repository has a single maintainer (team size == 1), leave
+#   "Require review from Code Owners" disabled or allow Repository Admin bypass
+#   in the branch Ruleset so PR authorship rules cannot deadlock merges.
+# - Once team size >= 2, enable mandatory Code Owner review without bypass.
+
 # Default repository owner
 * @workwithcrow12-art
 

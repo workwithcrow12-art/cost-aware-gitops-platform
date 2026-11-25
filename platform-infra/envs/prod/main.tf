@@ -5,31 +5,35 @@ locals {
   }
 }
 
+# In ap-southeast-1, nat_per_az = true provisions 3 NAT gateways (~$0.059/hr x 3 AZs ~=
+# $129/month fixed before $0.059/GB data processing) for AZ-isolated egress, compared with
+# ~$43/month for nat_per_az = false (single NAT, which introduces cross-AZ egress charges and a single-AZ failure blast radius).
 module "network" {
   source                     = "../../modules/network"
   name                       = local.name
   vpc_cidr                   = var.vpc_cidr
   az_count                   = 3
-  nat_per_az                 = true
+  nat_per_az                 = var.nat_per_az
   enable_interface_endpoints = var.enable_interface_endpoints
 }
 
 module "cluster" {
-  source                = "../../modules/cluster"
-  name                  = local.name
-  kubernetes_version    = var.kubernetes_version
-  subnet_ids            = module.network.private_subnet_ids
-  operator_access_cidrs = var.operator_access_cidrs
-  operator_role_arn     = var.operator_role_arn
-  capacity_type         = "ON_DEMAND"
-  instance_types        = ["m6i.large"]
-  node_count            = 3
-  cost_tags             = local.cost_tags
-  enable_ebs_csi        = var.enable_ebs_csi
+  source                 = "../../modules/cluster"
+  name                   = local.name
+  kubernetes_version     = var.kubernetes_version
+  subnet_ids             = module.network.private_subnet_ids
+  operator_access_cidrs  = var.operator_access_cidrs
+  operator_role_arn      = var.operator_role_arn
+  operator_access_policy = var.operator_access_policy
+  break_glass_role_arn   = var.break_glass_role_arn
+  capacity_type          = "ON_DEMAND"
+  instance_types         = ["m6i.large"]
+  node_count             = 3
+  cost_tags              = local.cost_tags
+  enable_ebs_csi         = var.enable_ebs_csi
 }
 
 module "budget" {
-  count  = var.budget == null ? 0 : 1
   source = "../../modules/budgets"
 
   name                      = "${local.name}-monthly"

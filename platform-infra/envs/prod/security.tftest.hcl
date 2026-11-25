@@ -42,22 +42,30 @@ mock_provider "aws" {
   }
 }
 
+variables {
+  operator_role_arn     = "arn:aws:iam::123456789012:role/ClusterOperator"
+  operator_access_cidrs = ["10.2.1.0/24"]
+  budget = {
+    monthly_limit_usd = 500
+    email             = "finops@example.com"
+  }
+}
+
 run "prod_environment_plan" {
   command = plan
-
-  variables {
-    operator_role_arn     = "arn:aws:iam::123456789012:role/ClusterOperator"
-    operator_access_cidrs = ["10.2.1.0/24"]
-  }
 
   assert {
     condition = (
       output.cluster_name == "cost-aware-prod" &&
+      output.budget_name == "cost-aware-prod-monthly" &&
       length(module.network.private_subnet_ids) == 3 &&
       local.cost_tags.env == "prod" &&
-      var.enable_ebs_csi
+      var.nat_per_az &&
+      var.enable_ebs_csi &&
+      module.cluster.operator_policy_arn == "arn:aws:eks::aws:cluster-access-policy/AmazonEKSViewPolicy" &&
+      module.cluster.break_glass_policy_arn == null
     )
-    error_message = "The full prod plan must wire the prod cluster, three private AZ subnets, EBS CSI and prod cost tags."
+    error_message = "The full prod plan must wire the prod cluster, mandatory budget, three private AZ subnets, per-AZ NAT, EBS CSI, default read-only operator access, and prod cost tags."
   }
 }
 
@@ -65,14 +73,10 @@ run "prod_wires_optional_budget_reporting_oidc_and_endpoints" {
   command = plan
 
   variables {
-    operator_role_arn          = "arn:aws:iam::123456789012:role/ClusterOperator"
-    operator_access_cidrs      = ["10.2.1.0/24"]
+    operator_access_policy     = "AmazonEKSEditPolicy"
+    break_glass_role_arn       = "arn:aws:iam::123456789012:role/ClusterBreakGlass"
     enable_interface_endpoints = true
     enable_karpenter           = true
-    budget = {
-      monthly_limit_usd = 500
-      email             = "finops@example.com"
-    }
     cost_reporting = {
       enable_reporter = true
       cur_catalog = {
@@ -97,19 +101,54 @@ run "prod_wires_optional_budget_reporting_oidc_and_endpoints" {
       output.budget_name == "cost-aware-prod-monthly" &&
       output.athena_workgroup == "cost-aware-prod-finops" &&
       length(module.karpenter) == 1 &&
-      length(module.github_oidc) == 1
+      length(module.github_oidc) == 1 &&
+      module.cluster.operator_policy_arn == "arn:aws:eks::aws:cluster-access-policy/AmazonEKSEditPolicy" &&
+      module.cluster.break_glass_principal_arn == "arn:aws:iam::123456789012:role/ClusterBreakGlass" &&
+      module.cluster.break_glass_policy_arn == "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
     )
-    error_message = "Prod must cleanly instantiate optional budget, cost-reporting, OIDC, interface endpoints and Karpenter modules."
+    error_message = "Prod must cleanly instantiate mandatory budget, cost-reporting, OIDC, interface endpoints, Karpenter, and break-glass cluster admin."
   }
+}
+
+run "prod_rejects_null_or_zero_budget" {
+  command = plan
+
+  variables {
+    budget = {
+      monthly_limit_usd = 0
+      email             = "finops@example.com"
+    }
+  }
+
+  expect_failures = [var.budget]
 }
 
 run "prod_rejects_world_operator_cidr" {
   command = plan
 
   variables {
-    operator_role_arn     = "arn:aws:iam::123456789012:role/ClusterOperator"
     operator_access_cidrs = ["0.0.0.0/0"]
   }
 
   expect_failures = [var.operator_access_cidrs]
+}
+
+run "prod_rejects_admin_routine_operator_policy" {
+  command = plan
+
+  variables {
+    operator_access_policy = "AmazonEKSClusterAdminPolicy"
+  }
+
+  expect_failures = [var.operator_access_policy]
+}
+
+run "prod_rejects_duplicate_break_glass_role" {
+  command = plan
+
+  variables {
+    break_glass_role_arn = "arn:aws:iam::123456789012:role/ClusterOperator"
+  }
+
+  expect_failures = [var.break_glass_role_arn]
 }

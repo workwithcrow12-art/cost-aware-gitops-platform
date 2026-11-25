@@ -1,19 +1,19 @@
 # .github
 
-Repository workflows, community files and documentation for **Cost-aware GitOps Platform**.
+Repository workflows, governance files, architecture records, and operational documentation for **Cost-aware GitOps Platform**.
 
-For an interview, use the [five-minute demo](docs/demo.md) and [latest local evidence](docs/evidence/portfolio-readiness-2026-11-16.md). For cloud work, read the [AWS lab prerequisites](docs/runbooks/aws-lab-evidence.md).
+For a technical interview or code walkthrough, start with the [5-minute offline demo](docs/demo.md) and [local readiness verification record](docs/evidence/portfolio-readiness-2026-11-16.md). Before provisioning cloud infrastructure, review the [AWS lab prerequisites and evidence runbook](docs/runbooks/aws-lab-evidence.md).
 
-Start with the [Vietnamese quick-start](docs/quick-start.md) and the [comparison remediation status](docs/comparison-remediation.md).
+Follow the [quick-start guide](docs/quick-start.md) and the [review comparison and remediation record](docs/comparison-remediation.md) for end-to-end component workflows.
 
 | Path | Purpose |
-|---|---|
-| `workflows/` | Active monorepo validation, service testing, image scanning and release workflows |
-| `docs/architecture/` | Architecture and deployment boundaries |
+| --- | --- |
+| `workflows/` | Active root monorepo CI validation, offline Terraform plan/Infracost gates, Kyverno checks, GHCR release, `promote-images.yml` GitOps PR automation, and opt-in OIDC apply/drift/Custodian workflows |
+| `docs/architecture/` | Platform architecture diagram, access model, and deployment boundaries |
 | `docs/adr/` | Architecture Decision Records |
-| `docs/runbooks/` | Step-by-step operational procedures |
-| `docs/postmortems/` | Incident write-ups |
-| `docs/case-study.md` | Demo evidence and a measurement protocol |
-| `docs/portfolio.md` | CV wording, interview walkthrough and publication notes |
-| `docs/evidence/` | Generated, explicitly synthetic FinOps demo reports |
-| `CONTRIBUTING.md`, `SECURITY.md` | Contribution and security guidance for this monorepo |
+| `docs/runbooks/` | Step-by-step operational procedures (EKS rebuild, lab evidence, rollback, budget alerts) |
+| `docs/postmortems/` | Canary auto-rollback fault-injection drill and incident template |
+| `docs/case-study.md` | Local verification commands and live cloud measurement protocol |
+| `docs/portfolio.md` | Project summary, CV bullets, interview walkthrough, and engineering tradeoffs |
+| `docs/evidence/` | Generated, explicitly synthetic FinOps demo reports and verification logs |
+| `CONTRIBUTING.md`, `SECURITY.md`, `CODEOWNERS` | Contribution workflow, solo-maintainer GitHub Ruleset guidance, and security reporting |

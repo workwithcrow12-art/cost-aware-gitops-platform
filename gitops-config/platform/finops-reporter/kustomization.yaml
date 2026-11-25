@@ -5,3 +5,8 @@ resources:
   - namespace.yaml
   - serviceaccount.yaml
   - cronjob.yaml
+labels:
+  - pairs:
+      team: platform
+      env: shared
+    includeTemplates: true

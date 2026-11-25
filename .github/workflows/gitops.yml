@@ -22,17 +22,22 @@ jobs:
         shell: bash
         run: |
           mkdir -p "${RUNNER_TEMP}/gitops-tools" "${RUNNER_TEMP}/kubeconform-cache"
+          cd "${RUNNER_TEMP}/gitops-tools"
           curl --fail --silent --show-error --location --retry 3 \
             https://github.com/yannh/kubeconform/releases/download/v0.7.0/kubeconform-linux-amd64.tar.gz \
-            | tar -xz -C "${RUNNER_TEMP}/gitops-tools" kubeconform
+            --output kubeconform-linux-amd64.tar.gz
+          echo "c31518ddd122663b3f3aa874cfe8178cb0988de944f29c74a0b9260920d115d3  kubeconform-linux-amd64.tar.gz" | sha256sum --check
+          tar -xz -f kubeconform-linux-amd64.tar.gz kubeconform
           curl --fail --silent --show-error --location --retry 3 \
             https://github.com/kyverno/kyverno/releases/download/v1.18.1/kyverno-cli_v1.18.1_linux_x86_64.tar.gz \
-            | tar -xz -C "${RUNNER_TEMP}/gitops-tools" kyverno
+            --output kyverno-cli_v1.18.1_linux_x86_64.tar.gz
+          echo "5e6bba9ca85beec6c93e94ca7fb0972a66df3b2e67636a08bef090cd3fc6535c  kyverno-cli_v1.18.1_linux_x86_64.tar.gz" | sha256sum --check
+          tar -xz -f kyverno-cli_v1.18.1_linux_x86_64.tar.gz kyverno
           echo "${RUNNER_TEMP}/gitops-tools" >> "$GITHUB_PATH"
       - name: Render and validate manifests
         shell: bash
         run: |
-          crd_schema='https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json'
+          crd_schema='https://raw.githubusercontent.com/datreeio/CRDs-catalog/04af58d740718c4dc719441bf39fb284c784f4a8/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json'
           kubeconform -strict -cache "${RUNNER_TEMP}/kubeconform-cache" \
             -schema-location default -schema-location "$crd_schema" \
             -summary -kubernetes-version 1.35.0 bootstrap/root-app.yaml
@@ -53,7 +58,7 @@ jobs:
       - name: Render monitoring profiles
         shell: bash
         run: |
-          crd_schema='https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json'
+          crd_schema='https://raw.githubusercontent.com/datreeio/CRDs-catalog/04af58d740718c4dc719441bf39fb284c784f4a8/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json'
           for profile in nonprod prod; do
             values=(-f platform/monitoring/values.yaml)
             if [[ "$profile" == prod ]]; then
@@ -87,6 +92,21 @@ jobs:
             kyverno apply platform/kyverno/policies \
               --resource "$RUNNER_TEMP/pods-$target.yaml"
           done
+          kubectl kustomize platform/finops-reporter \
+            | kubectl label --local -f - -o json validation=true \
+            | jq -rs '[.[] | select(.kind == "CronJob")
+                | {apiVersion: "v1", kind: "Pod",
+                   metadata: {
+                     name: .metadata.name,
+                     namespace: (.metadata.namespace // "finops"),
+                     labels: (.spec.jobTemplate.spec.template.metadata.labels // {})
+                   },
+                   spec: .spec.jobTemplate.spec.template.spec}]
+                | if length == 0 then error("no finops CronJob pods found")
+                  else .[] | "---\n" + tojson end' \
+            > "$RUNNER_TEMP/pods-finops.yaml"
+          kyverno apply platform/kyverno/policies \
+            --resource "$RUNNER_TEMP/pods-finops.yaml"
       - name: Scan deployed Redis digests
         shell: bash
         run: |

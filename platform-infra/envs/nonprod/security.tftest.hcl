@@ -50,20 +50,24 @@ run "nonprod_environment_plan_with_ebs_csi_parity" {
       output.cluster_name == "cost-aware-nonprod" &&
       length(module.network.private_subnet_ids) == 2 &&
       local.cost_tags.env == "nonprod" &&
-      var.enable_ebs_csi
+      var.enable_ebs_csi &&
+      module.cluster.operator_policy_arn == "arn:aws:eks::aws:cluster-access-policy/AmazonEKSViewPolicy" &&
+      module.cluster.break_glass_policy_arn == null
     )
-    error_message = "Nonprod plan must wire the nonprod cluster, two private AZ subnets, EBS CSI parity and nonprod cost tags."
+    error_message = "Nonprod plan must wire the nonprod cluster, two private AZ subnets, EBS CSI parity, default read-only operator access, and nonprod cost tags."
   }
 }
 
-run "nonprod_wires_optional_finops_oidc_and_karpenter" {
+run "nonprod_wires_optional_finops_oidc_karpenter_and_break_glass" {
   command = plan
 
   variables {
-    operator_role_arn     = "arn:aws:iam::123456789012:role/ClusterOperator"
-    operator_access_cidrs = ["10.2.1.0/24"]
-    enable_karpenter      = true
-    budget                = { monthly_limit_usd = 150, email = "finops@example.com" }
+    operator_role_arn      = "arn:aws:iam::123456789012:role/ClusterOperator"
+    operator_access_policy = "AmazonEKSEditPolicy"
+    break_glass_role_arn   = "arn:aws:iam::123456789012:role/ClusterBreakGlass"
+    operator_access_cidrs  = ["10.2.1.0/24"]
+    enable_karpenter       = true
+    budget                 = { monthly_limit_usd = 150, email = "finops@example.com" }
     cost_reporting = {
       enable_reporter = true
       cur_catalog     = { database_name = "finops_nonprod", table_name = "cur", data_s3 = "s3://billing-data/cur/parquet/" }
@@ -84,9 +88,12 @@ run "nonprod_wires_optional_finops_oidc_and_karpenter" {
       output.budget_name == "cost-aware-nonprod-monthly" &&
       output.athena_workgroup == "cost-aware-nonprod-finops" &&
       length(module.karpenter) == 1 &&
-      length(module.github_oidc) == 1
+      length(module.github_oidc) == 1 &&
+      module.cluster.operator_policy_arn == "arn:aws:eks::aws:cluster-access-policy/AmazonEKSEditPolicy" &&
+      module.cluster.break_glass_principal_arn == "arn:aws:iam::123456789012:role/ClusterBreakGlass" &&
+      module.cluster.break_glass_policy_arn == "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
     )
-    error_message = "Optional environment modules must wire cleanly when configured."
+    error_message = "Optional environment modules and break-glass cluster admin must wire cleanly when configured."
   }
 }
 
@@ -99,4 +106,28 @@ run "nonprod_rejects_world_operator_cidr" {
   }
 
   expect_failures = [var.operator_access_cidrs]
+}
+
+run "nonprod_rejects_admin_routine_operator_policy" {
+  command = plan
+
+  variables {
+    operator_role_arn      = "arn:aws:iam::123456789012:role/ClusterOperator"
+    operator_access_policy = "AmazonEKSClusterAdminPolicy"
+    operator_access_cidrs  = ["10.2.1.0/24"]
+  }
+
+  expect_failures = [var.operator_access_policy]
+}
+
+run "nonprod_rejects_duplicate_break_glass_role" {
+  command = plan
+
+  variables {
+    operator_role_arn     = "arn:aws:iam::123456789012:role/ClusterOperator"
+    break_glass_role_arn  = "arn:aws:iam::123456789012:role/ClusterOperator"
+    operator_access_cidrs = ["10.2.1.0/24"]
+  }
+
+  expect_failures = [var.break_glass_role_arn]
 }

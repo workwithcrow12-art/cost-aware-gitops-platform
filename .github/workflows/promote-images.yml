@@ -1,0 +1,197 @@
+name: Promote scanned image digests to GitOps
+
+on:
+  workflow_call:
+    inputs:
+      revision:
+        description: Source commit SHA of the scanned images
+        type: string
+        required: true
+      release_tag:
+        description: Release tag associated with the published images
+        type: string
+        required: false
+        default: ''
+      run_id:
+        description: Workflow run ID containing scanned-image-* artifacts
+        type: string
+        required: true
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: Workflow run ID containing scanned-image-* artifacts
+        type: string
+        required: true
+      revision:
+        description: 40-character commit SHA of the scanned images
+        type: string
+        required: true
+      environments:
+        description: Target GitOps environment(s) to update
+        type: choice
+        required: false
+        default: all
+        options:
+          - all
+          - dev
+          - staging
+          - prod
+          - preview
+
+permissions:
+  contents: read
+
+concurrency:
+  group: promote-images-${{ inputs.revision }}
+  cancel-in-progress: false
+
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      actions: read
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: refs/heads/main
+          persist-credentials: false
+      - uses: azure/setup-kubectl@776406bce94f63e41d621b960d78ee25c8b76ede # v4.0.1
+        with:
+          version: v1.35.2
+      - name: Download scanned image artifacts from current run
+        if: format('{0}', inputs.run_id) == format('{0}', github.run_id)
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          pattern: scanned-image-*
+          path: ${{ runner.temp }}/all-artifacts
+      - name: Download scanned image artifacts from specified run
+        if: format('{0}', inputs.run_id) != format('{0}', github.run_id)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ inputs.run_id }}
+        run: |
+          set -euo pipefail
+          [[ "$RUN_ID" =~ ^[0-9]+$ ]] || {
+            echo "Invalid workflow run_id: $RUN_ID" >&2
+            exit 1
+          }
+          mkdir -p "$RUNNER_TEMP/all-artifacts"
+          gh run download "$RUN_ID" \
+            --repo "$GITHUB_REPOSITORY" \
+            --pattern 'scanned-image-*' \
+            --dir "$RUNNER_TEMP/all-artifacts"
+      - name: Arrange digest records and update GitOps overlays
+        env:
+          REVISION: ${{ inputs.revision }}
+          RELEASE_TAG: ${{ inputs.release_tag || '' }}
+          ENVIRONMENTS: ${{ inputs.environments || 'all' }}
+        run: |
+          set -euo pipefail
+          [[ "$REVISION" =~ ^[0-9a-f]{40}$ ]] || {
+            echo "Invalid 40-char commit SHA: $REVISION" >&2
+            exit 1
+          }
+          mkdir -p "$RUNNER_TEMP/records" "$RUNNER_TEMP/finops"
+          services=(
+            adservice
+            cartservice
+            checkoutservice
+            currencyservice
+            emailservice
+            frontend
+            loadgenerator
+            paymentservice
+            productcatalogservice
+            recommendationservice
+            shippingservice
+          )
+          for service in "${services[@]}"; do
+            src="$RUNNER_TEMP/all-artifacts/scanned-image-${service}/${service}.json"
+            [[ -f "$src" ]] || {
+              echo "Missing scanned image record: $src" >&2
+              exit 1
+            }
+            mkdir -p "$RUNNER_TEMP/records/scanned-image-${service}"
+            cp "$src" "$RUNNER_TEMP/records/scanned-image-${service}/${service}.json"
+          done
+
+          finops_args=()
+          if [[ -f "$RUNNER_TEMP/all-artifacts/scanned-image-finops-toolkit/finops-toolkit.json" ]]; then
+            cp "$RUNNER_TEMP/all-artifacts/scanned-image-finops-toolkit/finops-toolkit.json" \
+              "$RUNNER_TEMP/finops/finops-toolkit.json"
+            finops_args=(--finops-record "$RUNNER_TEMP/finops/finops-toolkit.json")
+          elif [[ -n "$RELEASE_TAG" ]]; then
+            echo "Missing scanned-image-finops-toolkit artifact for release $RELEASE_TAG" >&2
+            exit 1
+          fi
+
+          if [[ "$ENVIRONMENTS" == "all" ]]; then
+            target_envs=(dev staging prod preview)
+          else
+            target_envs=("$ENVIRONMENTS")
+          fi
+
+          for env in "${target_envs[@]}"; do
+            python3 boutique-app/.github/scripts/scanned-images.py \
+              "$RUNNER_TEMP/records" \
+              "${GITHUB_REPOSITORY_OWNER,,}" \
+              "$REVISION" \
+              "$env" \
+              --apply-gitops gitops-config \
+              "${finops_args[@]}"
+          done
+
+          for path in gitops-config/apps/boutique/overlays/{dev,staging,prod,preview} \
+                      gitops-config/platform/finops-reporter; do
+            kubectl kustomize "$path" > /dev/null
+          done
+      - name: Push promotion branch and open Pull Request
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REVISION: ${{ inputs.revision }}
+          RELEASE_TAG: ${{ inputs.release_tag || '' }}
+          RUN_ID: ${{ inputs.run_id }}
+          ENVIRONMENTS: ${{ inputs.environments || 'all' }}
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- gitops-config; then
+            echo "GitOps manifests already pin digests for $REVISION; no PR required." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          SHORT_SHA="${REVISION:0:12}"
+          branch="chore/promote-images-${SHORT_SHA}"
+          label="${RELEASE_TAG:-$SHORT_SHA}"
+          title="chore(gitops): promote scanned image digests for ${label}"
+          body=$(cat <<EOF
+          ## Automated GitOps Image Digest Promotion
+
+          - **Source revision:** \`${REVISION}\`
+          - **Release tag:** \`${RELEASE_TAG:-none}\`
+          - **Scanned workflow run:** \`${RUN_ID}\`
+          - **Target environments:** \`${ENVIRONMENTS}\`
+
+          All promoted GHCR image digests passed Trivy HIGH/CRITICAL vulnerability gates before publication, and updated Kustomize overlays were rendered cleanly.
+          EOF
+          )
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -B "$branch"
+          git add gitops-config
+          git commit -m "$title"
+
+          auth=$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 | tr -d '\n')
+          git -c "http.${GITHUB_SERVER_URL}/.extraheader=AUTHORIZATION: basic ${auth}" \
+            push --force origin "HEAD:refs/heads/${branch}"
+
+          existing_pr=$(gh pr list --repo "$GITHUB_REPOSITORY" --head "$branch" --base main --state open --json number --jq '.[0].number // empty')
+          if [[ -n "$existing_pr" ]]; then
+            gh pr edit "$existing_pr" --repo "$GITHUB_REPOSITORY" --title "$title" --body "$body"
+            pr_url=$(gh pr view "$existing_pr" --repo "$GITHUB_REPOSITORY" --json url --jq '.url')
+          else
+            pr_url=$(gh pr create --repo "$GITHUB_REPOSITORY" --base main --head "$branch" --title "$title" --body "$body")
+          fi
+          printf '### GitOps Promotion PR\n\nOpened or updated %s for `%s`.\n' "$pr_url" "$REVISION" >> "$GITHUB_STEP_SUMMARY"

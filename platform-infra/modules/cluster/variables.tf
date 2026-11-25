@@ -33,13 +33,39 @@ variable "operator_access_cidrs" {
 }
 
 variable "operator_role_arn" {
-  description = "Explicit IAM role that can administer Kubernetes."
+  description = "Explicit IAM role granted routine Kubernetes operator access."
   type        = string
   nullable    = false
 
   validation {
     condition     = can(regex("^arn:aws(-[a-z]+)*:iam::[0-9]{12}:role/[A-Za-z0-9_+=,.@/-]+$", var.operator_role_arn))
     error_message = "Provide an IAM role ARN, not an AWS STS session ARN or IAM user ARN."
+  }
+}
+
+variable "operator_access_policy" {
+  description = "EKS cluster access policy associated with operator_role_arn for routine read or edit access."
+  type        = string
+  default     = "AmazonEKSViewPolicy"
+  nullable    = false
+
+  validation {
+    condition     = contains(["AmazonEKSViewPolicy", "AmazonEKSEditPolicy"], var.operator_access_policy)
+    error_message = "Routine operator_access_policy must be AmazonEKSViewPolicy or AmazonEKSEditPolicy."
+  }
+}
+
+variable "break_glass_role_arn" {
+  description = "Optional distinct IAM role granted AmazonEKSClusterAdminPolicy for initial Argo CD bootstrap and emergency break-glass recovery."
+  type        = string
+  default     = null
+
+  validation {
+    condition = var.break_glass_role_arn == null || (
+      can(regex("^arn:aws(-[a-z]+)*:iam::[0-9]{12}:role/[A-Za-z0-9_+=,.@/-]+$", var.break_glass_role_arn)) &&
+      var.break_glass_role_arn != var.operator_role_arn
+    )
+    error_message = "When set, break_glass_role_arn must be a valid IAM role ARN distinct from operator_role_arn."
   }
 }
 
