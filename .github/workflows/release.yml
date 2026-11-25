@@ -120,7 +120,11 @@ jobs:
         run: |
           set -euo pipefail
           notes_file=".github/docs/releases/$TAG.md"
-          if [[ -f "$notes_file" ]]; then
+          if gh release view "$TAG" --repo "$REPO" >/dev/null 2>&1; then
+            if [[ -f "$notes_file" ]]; then
+              gh release edit "$TAG" --repo "$REPO" --title "$TAG" --notes-file "$notes_file"
+            fi
+          elif [[ -f "$notes_file" ]]; then
             gh release create "$TAG" --repo "$REPO" --verify-tag --title "$TAG" --notes-file "$notes_file"
           else
             gh release create "$TAG" --repo "$REPO" --verify-tag --title "$TAG" --generate-notes

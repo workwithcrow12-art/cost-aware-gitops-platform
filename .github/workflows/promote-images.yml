@@ -191,7 +191,15 @@ jobs:
           if [[ -n "$existing_pr" ]]; then
             gh pr edit "$existing_pr" --repo "$GITHUB_REPOSITORY" --title "$title" --body "$body"
             pr_url=$(gh pr view "$existing_pr" --repo "$GITHUB_REPOSITORY" --json url --jq '.url')
+            printf '### GitOps Promotion PR\n\nUpdated %s for `%s`.\n' "$pr_url" "$REVISION" >> "$GITHUB_STEP_SUMMARY"
+          elif create_out=$(gh pr create --repo "$GITHUB_REPOSITORY" --base main --head "$branch" --title "$title" --body "$body" 2>&1); then
+            pr_url="$create_out"
+            printf '### GitOps Promotion PR\n\nOpened %s for `%s`.\n' "$pr_url" "$REVISION" >> "$GITHUB_STEP_SUMMARY"
+          elif [[ "$create_out" == *"not permitted to create or approve pull requests"* ]]; then
+            manual_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/pull/new/${branch}"
+            echo "::warning::Repository setting 'Allow GitHub Actions to create and approve pull requests' is disabled; pushed ${branch}. Open PR manually: ${manual_url}"
+            printf '### GitOps Promotion Branch Pushed\n\nPushed `%s` for `%s`. Open Pull Request: %s\n' "$branch" "$REVISION" "$manual_url" >> "$GITHUB_STEP_SUMMARY"
           else
-            pr_url=$(gh pr create --repo "$GITHUB_REPOSITORY" --base main --head "$branch" --title "$title" --body "$body")
+            printf '%s\n' "$create_out" >&2
+            exit 1
           fi
-          printf '### GitOps Promotion PR\n\nOpened or updated %s for `%s`.\n' "$pr_url" "$REVISION" >> "$GITHUB_STEP_SUMMARY"
