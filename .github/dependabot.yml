@@ -12,6 +12,12 @@ updates:
       - /platform-infra/envs/prod
       - /platform-infra/envs/aks
       - /platform-infra/envs/gke
+      - /platform-infra/modules/budgets
+      - /platform-infra/modules/cluster
+      - /platform-infra/modules/cost-reporting
+      - /platform-infra/modules/iam-github-oidc
+      - /platform-infra/modules/karpenter
+      - /platform-infra/modules/network
     schedule:
       interval: weekly
 

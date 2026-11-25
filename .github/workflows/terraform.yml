@@ -1,6 +1,9 @@
 name: platform-infra checks
 on:
   workflow_call:
+    secrets:
+      INFRACOST_API_KEY:
+        required: false
 
 permissions:
   contents: read
@@ -28,3 +31,45 @@ jobs:
         run: make test
       - name: Verify cost tagging policy
         run: docker run --rm --network none -v "$PWD/policies:/policy:ro" openpolicyagent/conftest:v0.62.0 verify --policy /policy
+      - name: Generate offline Terraform plans and enforce cost tagging
+        run: |
+          python3 scripts/offline_plan_check.py --output-dir "$RUNNER_TEMP/plans"
+          docker run --rm --network none \
+            -v "$PWD/policies:/policy:ro" \
+            -v "$RUNNER_TEMP/plans:/plans:ro" \
+            openpolicyagent/conftest:v0.62.0 test \
+            /plans/nonprod.json /plans/prod.json /plans/gke.json /plans/aks.json --policy /policy
+      - name: Check Infracost configuration
+        id: infracost_config
+        env:
+          INFRACOST_API_KEY: ${{ secrets.INFRACOST_API_KEY }}
+        run: |
+          if [[ -n "${INFRACOST_API_KEY:-}" ]]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            {
+              echo "### Infracost Breakdown"
+              echo ""
+              echo "Skipped live price breakdown because \`INFRACOST_API_KEY\` is not configured (for example on fork pull requests or repositories without an Infracost secret). Offline Terraform plan generation and Conftest cost-tagging policy gates passed."
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - name: Set up Infracost CLI
+        if: steps.infracost_config.outputs.enabled == 'true'
+        uses: infracost/actions/setup@a5783eb98adc93aa7a0049fce0abb06fdd30770a # v5.0.1
+        with:
+          api-key: ${{ secrets.INFRACOST_API_KEY }}
+          version: 0.10.50
+      - name: Run Infracost cost breakdown
+        if: steps.infracost_config.outputs.enabled == 'true'
+        env:
+          INFRACOST_API_KEY: ${{ secrets.INFRACOST_API_KEY }}
+          NO_COLOR: '1'
+        run: |
+          {
+            echo "### Infracost Breakdown"
+            echo ""
+            echo '```text'
+            infracost breakdown --config-file infracost.yml --format table
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

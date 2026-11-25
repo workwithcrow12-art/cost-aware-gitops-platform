@@ -2,13 +2,6 @@ name: Release validation
 on:
   push:
     branches: [main]
-    paths-ignore:
-      - '**.md'
-      - 'LICENSE'
-      - 'NOTICE'
-      - '.gitattributes'
-      - '.gitignore'
-      - '.github/CODEOWNERS'
   pull_request:
     paths-ignore:
       - '**.md'
@@ -33,6 +26,8 @@ jobs:
     uses: ./.github/workflows/services.yml
   terraform:
     uses: ./.github/workflows/terraform.yml
+    secrets:
+      INFRACOST_API_KEY: ${{ secrets.INFRACOST_API_KEY }}
   gitops:
     uses: ./.github/workflows/gitops.yml
   images:
