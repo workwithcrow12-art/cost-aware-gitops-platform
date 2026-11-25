@@ -111,5 +111,5 @@ run "prod_rejects_world_operator_cidr" {
     operator_access_cidrs = ["0.0.0.0/0"]
   }
 
-  expect_failures = [module.cluster.var.operator_access_cidrs]
+  expect_failures = [var.operator_access_cidrs]
 }
