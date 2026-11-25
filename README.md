@@ -1,22 +1,27 @@
 # Cost-aware GitOps Platform
 
-A DevOps and FinOps portfolio lab that combines infrastructure as code, GitOps delivery and cloud cost reporting. It uses Google Online Boutique as the sample microservices application and connects Terraform, GitHub Actions, Argo CD, Kubernetes and cost analysis in one project.
+[![Release validation](https://github.com/workwithcrow12-art/cost-aware-gitops-platform/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/workwithcrow12-art/cost-aware-gitops-platform/actions/workflows/ci.yml)
+[![Release: v0.9](https://img.shields.io/badge/release-v0.9-0969da)](.github/docs/releases/v0.9.md)
+[![FinOps: OpenCost + FOCUS 1.1](https://img.shields.io/badge/FinOps-OpenCost%20%2B%20FOCUS%201.1-6f42c1)](finops-toolkit/README.md)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-**AWS EKS is the primary deployment path.** Optional Terraform roots support nonproduction GKE and AKS labs. Local tests and deployment configuration are available; live cloud deployment, recovery and measured cost savings still require a separate lab exercise.
+Reference DevOps and FinOps platform lab connecting **private AWS EKS infrastructure (Terraform)**, **digest-pinned GitOps delivery with canary analysis (Argo CD & Rollouts)**, **Kubernetes admission/network security (Kyverno)** and **multi-source cloud cost & waste reporting (OpenCost, AWS CUR/Athena, FOCUS CSV, Cloud Custodian)** around Google's [Online Boutique](https://github.com/GoogleCloudPlatform/microservices-demo) microservices workload.
 
-[Architecture](.github/docs/architecture/overview.md) · [Five-minute demo, in Vietnamese](.github/docs/demo.md) · [Verification and demo](.github/docs/case-study.md) · [v0.9 release notes](.github/docs/releases/v0.9.md) · [GitHub Actions](https://github.com/workwithcrow12-art/cost-aware-gitops-platform/actions) · [MIT License](LICENSE) · [NOTICE](NOTICE)
+**AWS EKS is the primary deployment path.** Optional Terraform roots support nonproduction GKE and AKS labs. Local tests, mocked infrastructure plans, policy gates and synthetic FinOps demos run without cloud credentials; live cloud deployment, recovery and measured cost savings require a separate lab exercise.
 
-## Project overview
+[Architecture](.github/docs/architecture/overview.md) · [5-minute demo (Tiếng Việt)](.github/docs/demo.md) · [Verification & case study](.github/docs/case-study.md) · [Portfolio & design tradeoffs](.github/docs/portfolio.md) · [v0.9 release notes](.github/docs/releases/v0.9.md) · [GitHub Actions](https://github.com/workwithcrow12-art/cost-aware-gitops-platform/actions) · [MIT License](LICENSE) · [NOTICE](NOTICE)
 
-The project covers five connected areas:
+## Key engineering highlights
 
-- **Infrastructure:** Terraform environments, private clusters, remote state, identity and cost tags.
-- **Delivery:** service tests, image builds and vulnerability scans, followed by reviewed image promotion through Git.
-- **GitOps:** environment overlays, Argo CD reconciliation, frontend canaries and rollback through configuration changes.
-- **Observability:** Prometheus, Grafana, HTTP probes and OpenCost allocation data.
-- **FinOps:** weekly cost comparisons, normalized multi-cloud billing input and read-only waste estimates.
+- **Infrastructure & Governance:** Separate `nonprod` (Spot) and `prod` (On-Demand) private EKS environments, encrypted S3 state, AWS Budgets, GitHub OIDC, mocked `terraform test` suites and OPA/Conftest cost-tag enforcement (`env`, `team`, `project`, `owner`).
+- **Supply-Chain & Policy Gates:** Multi-language CI across 11 services, Trivy `HIGH`/`CRITICAL` image blocking, immutable `@sha256` digest promotion PRs, default-deny `NetworkPolicy`, Sealed Secrets and Kyverno `restricted` pod security + resource/label enforcement.
+- **Controlled GitOps Delivery:** Argo CD `ApplicationSet` environments (`dev`, `staging`, PR `preview`, manual-sync `prod`), scheduled weekday off-hours scaling (`GoKubeDownscaler`) in nonprod, and Prometheus-probed Argo Rollouts frontend canaries.
+- **Data-Safe FinOps CLI (`finops-toolkit`):**
+  - Keeps **OpenCost workload allocations** and **AWS CUR billing** separate instead of summing overlapping totals.
+  - Rejects incomplete 14-day UTC comparison windows rather than treating missing billing days as `$0`.
+  - Normalizes multi-cloud spend from **FOCUS 1.0/1.1 CSV** exports (preserving credits and per-currency totals) and estimates monthly waste from read-only **Cloud Custodian** findings.
 
-The project-specific work is the platform, delivery automation, FinOps tooling and integration tests. The storefront and application services originate from Google's [Online Boutique](https://github.com/GoogleCloudPlatform/microservices-demo).
+The platform infrastructure, delivery automation, policy gates, FinOps CLI and verification suites are original to this project; the storefront services originate from Google's Online Boutique.
 
 ## Architecture
 
@@ -65,6 +70,20 @@ python -m finops.cli waste --input finops-toolkit/tests/fixtures/custodian --dry
 In Bash, replace the first line with `export PYTHONPATH="$PWD/finops-toolkit/src"`.
 
 Example outputs: [weekly report](.github/docs/evidence/weekly-report.md) and [waste summary](.github/docs/evidence/waste-report.md). Their amounts illustrate reporting behavior with synthetic data; they are not measured savings.
+
+<details>
+<summary><strong>Preview offline demo output (synthetic fixtures, zero credentials)</strong></summary>
+
+```text
+$ python scripts/portfolio_demo.py
+PASS: finops-tests.log       # 42 unit tests (missing-day rejection, credits, currencies, notifications)
+PASS: digest-tests.log       # 6 release-digest completeness & revision checks
+PASS: weekly-report.md       # OpenCost ($89.47 vs $104.00) and AWS CUR ($140.00 vs $165.00), shown separately
+PASS: cloud-report.md        # Multi-cloud FOCUS CSV (AWS, GCP, Azure: 43.75 USD/week)
+PASS: waste-report.md        # 4 Cloud Custodian candidates (~$27.88/month at illustrative default rates)
+```
+
+</details>
 
 ## Running a cloud lab
 
