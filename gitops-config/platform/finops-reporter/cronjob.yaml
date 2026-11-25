@@ -30,7 +30,7 @@ spec:
           containers:
             - name: reporter
               # Pinned to the immutable @sha256 digest emitted by release.yml and updated by promote-images.yml.
-              image: ghcr.io/workwithcrow12-art/finops-toolkit@sha256:7acf0b4eec01a2fc3e73562dac1add7b18836a9982b99a1e54467d66c57a4247
+              image: ghcr.io/workwithcrow12-art/finops-toolkit@sha256:19bfd4a197440f0ee1558340cd9e1fdaa6a82626b1f6c1e70024d66d50a14c2e
               args:
                 - report
               env:

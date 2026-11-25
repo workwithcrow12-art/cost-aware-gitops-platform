@@ -69,31 +69,31 @@ patches:
 images:
   - name: us-central1-docker.pkg.dev/online-boutique-ci/microservices-demo/adservice
     newName: ghcr.io/workwithcrow12-art/adservice
-    digest: sha256:c71032e03cb5cc0ce2cc27b99c37175d980074c63083bda2e733187cf52d178c
+    digest: sha256:61b3d7bb0753c95672a0ca98653956396a297a2faa6c5319c0dbc6c2bae0ad94
   - name: us-central1-docker.pkg.dev/online-boutique-ci/microservices-demo/cartservice
     newName: ghcr.io/workwithcrow12-art/cartservice
-    digest: sha256:f7b3ea31210e51d963def379cc95934ddc35acf9652cb1d25eb98e492f6bcad8
+    digest: sha256:11f84efd26a6b23cf208fa78cc8427c31e4c5d08eb74fef4ba7f957e7872ce05
   - name: us-central1-docker.pkg.dev/online-boutique-ci/microservices-demo/checkoutservice
     newName: ghcr.io/workwithcrow12-art/checkoutservice
-    digest: sha256:220b4cac7e8e69d9d15bfc0744394e382adea54a14c6db12039b2040c420f8f9
+    digest: sha256:149bb792a1699dfeef9bfaa799f970696ab81ba2df134921e6c503b85afdb3e6
   - name: us-central1-docker.pkg.dev/online-boutique-ci/microservices-demo/currencyservice
     newName: ghcr.io/workwithcrow12-art/currencyservice
-    digest: sha256:45a1310f3bcddc48763b54218dbf4d4df79ee92fc37ad57a0dbc26951b5251d2
+    digest: sha256:428e5926298d211617b051510d0c55724d9eee1d74b24d1aed49aa5cc7348466
   - name: us-central1-docker.pkg.dev/online-boutique-ci/microservices-demo/emailservice
     newName: ghcr.io/workwithcrow12-art/emailservice
-    digest: sha256:ee1c993caf51d2e3bb757159cbdd9e7a9f976d91535f10b5349e1ec7292a7813
+    digest: sha256:a8ae9667e5cd3c1534e8ef9f9165aa7f0b65241a8ee52b92e89f64a8ecf80ee7
   - name: us-central1-docker.pkg.dev/online-boutique-ci/microservices-demo/frontend
     newName: ghcr.io/workwithcrow12-art/frontend
-    digest: sha256:092501a03f2bc3a4265a0ba336da285a7d9f255d8d44ce5c80ba3b042eb82a8e
+    digest: sha256:e155c32e6f8660c4256631e6ef1be69dfe694ab73d45dd49780394aee83b2a69
   - name: us-central1-docker.pkg.dev/online-boutique-ci/microservices-demo/paymentservice
     newName: ghcr.io/workwithcrow12-art/paymentservice
-    digest: sha256:7ff5687d368e95633f3451b1760e310d81a7d52a88fc27e1d94650d024359bc4
+    digest: sha256:0cb8599c64c22c9e503b789b1ea34961b245d0930346ebaba5f2e9f3db981a37
   - name: us-central1-docker.pkg.dev/online-boutique-ci/microservices-demo/productcatalogservice
     newName: ghcr.io/workwithcrow12-art/productcatalogservice
-    digest: sha256:cc63b1d8a0fdfdd1400b8cfe32c7a5eb738258b713f2b77b34bc421e42792f90
+    digest: sha256:f98309c835d94a5ebe461f247c31a41605b089951832e52e79a5ca7873c5543e
   - name: us-central1-docker.pkg.dev/online-boutique-ci/microservices-demo/recommendationservice
     newName: ghcr.io/workwithcrow12-art/recommendationservice
-    digest: sha256:cedc1bad1202c6ae2ef7970bbe2ab70165526e456bc93584a4021c5806b555ca
+    digest: sha256:cb82027a2057461a49538e1b897f558272bf9dc3c619cea1396177c0749fc597
   - name: us-central1-docker.pkg.dev/online-boutique-ci/microservices-demo/shippingservice
     newName: ghcr.io/workwithcrow12-art/shippingservice
-    digest: sha256:f02be45c28ca4af8b8cbaba9ac48abc141811062a053d61c0a05f9077b0a294b
+    digest: sha256:40a29409b2a542a10d78581f2d169fb7d75f4f3f8391ad520fa74f313947065d
