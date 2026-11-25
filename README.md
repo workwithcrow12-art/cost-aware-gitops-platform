@@ -1,7 +1,7 @@
 # Cost-aware GitOps Platform
 
 [![Release validation](https://github.com/workwithcrow12-art/cost-aware-gitops-platform/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/workwithcrow12-art/cost-aware-gitops-platform/actions/workflows/ci.yml)
-[![Release: v0.9](https://img.shields.io/badge/release-v0.9-0969da)](.github/docs/releases/v0.9.md)
+[![Release: v1.0.0](https://img.shields.io/badge/release-v1.0.0-0969da)](.github/docs/releases/v1.0.0.md)
 [![FinOps: OpenCost + FOCUS 1.1](https://img.shields.io/badge/FinOps-OpenCost%20%2B%20FOCUS%201.1-6f42c1)](finops-toolkit/README.md)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
@@ -9,7 +9,7 @@ Reference DevOps and FinOps platform lab connecting **private AWS EKS infrastruc
 
 **AWS EKS is the primary deployment path.** Optional Terraform roots support nonproduction GKE and AKS labs. Local unit suites, offline Terraform plans, policy gates, synthetic FinOps demos, and the Cloud Lab Readiness Kit run without cloud credentials; live cloud deployment, recovery timing, and measured cost savings require an authenticated lab run.
 
-[Architecture](.github/docs/architecture/overview.md) · [5-minute demo](.github/docs/demo.md) · [Verification & case study](.github/docs/case-study.md) · [Portfolio & design tradeoffs](.github/docs/portfolio.md) · [v0.9 release notes](.github/docs/releases/v0.9.md) · [GitHub Actions](https://github.com/workwithcrow12-art/cost-aware-gitops-platform/actions) · [MIT License](LICENSE) · [NOTICE](NOTICE)
+[Architecture](.github/docs/architecture/overview.md) · [5-minute demo](.github/docs/demo.md) · [Verification & case study](.github/docs/case-study.md) · [Portfolio & design tradeoffs](.github/docs/portfolio.md) · [v1.0.0 release notes](.github/docs/releases/v1.0.0.md) · [GitHub Actions](https://github.com/workwithcrow12-art/cost-aware-gitops-platform/actions) · [MIT License](LICENSE) · [NOTICE](NOTICE)
 
 ## Key engineering highlights
 
@@ -127,7 +127,7 @@ These items represent live cloud validation steps or future extensions rather th
 | Medium | Benchmark Karpenter autoscaling and rightsizing | Compare workload cost and latency with `enable_karpenter = true` against the fixed-node baseline before enabling Cost Anomaly Detection. |
 | Before enabling | Provision GCP dependencies for `shoppingassistantservice` | Supply AlloyDB, Secret Manager, Gemini credentials, and hardened manifests before enabling `ENABLE_ASSISTANT=true`. |
 
-Athena provisioning, Kyverno `boutique-*` + `finops` policy tests, offline Terraform plan Conftest gates, `promote-images.yml`, a baseline Grafana dashboard, persistent production Prometheus storage, and failure notifications already exist. Review the [v0.9 release notes](.github/docs/releases/v0.9.md) and [review comparison & remediation record](.github/docs/comparison-remediation.md) before adding overlapping tools.
+Athena provisioning, Kyverno `boutique-*` + `finops` policy tests, offline Terraform plan Conftest gates, `promote-images.yml`, a baseline Grafana dashboard, persistent production Prometheus storage, and failure notifications already exist. Review the [v1.0.0 release notes](.github/docs/releases/v1.0.0.md), [v0.9 release notes](.github/docs/releases/v0.9.md), and [review comparison & remediation record](.github/docs/comparison-remediation.md) before adding overlapping tools.
 
 ## Further documentation
 
