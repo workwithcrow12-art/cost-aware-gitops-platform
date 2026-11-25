@@ -1,45 +1,52 @@
-# Demo portfolio trong 5 phút
+# 5-Minute Portfolio Demo
 
-Demo này dành cho nhà tuyển dụng xem cách tổ chức nền tảng, kiểm thử và xử lý chi phí. Chỉ cần Python 3.11 trở lên; không cần cài package, đăng nhập AWS hay mở cổng mạng. Kết quả dùng dữ liệu tổng hợp, không phải bằng chứng đã triển khai cloud.
+This walkthrough demonstrates platform boundaries, automated verification, and cost-reporting safeguards for engineering reviewers. It requires only Python 3.11 or newer—no third-party package installation, cloud login, or open network sockets. All figures come from committed synthetic fixtures and do not claim a live cloud deployment or measured cloud savings.
 
-## Chuẩn bị và chạy
+## Setup and Execution
 
-Clone monorepo theo [quick-start](quick-start.md), rồi chạy từ root bằng PowerShell hoặc Bash:
+Clone the monorepo following the [quick-start guide](quick-start.md), then run from the repository root in PowerShell or Bash:
 
-```text
+```bash
 python scripts/portfolio_demo.py
 ```
 
-Lệnh in đường dẫn thư mục bằng chứng mới dưới `.scratch/portfolio-demo-<UTC timestamp>`. Mỗi lần chạy có thư mục riêng. Có thể chọn đường dẫn mới bằng `--output-dir`; thư mục đã tồn tại sẽ bị từ chối để giữ nguyên bằng chứng cũ.
+The runner prints a new evidence directory path under `.scratch/portfolio-demo-<UTC timestamp>`. Every run writes to a fresh directory; you can pass `--output-dir <path>`, and existing directories are rejected so prior evidence is never overwritten.
 
-| File đầu ra | Dùng để trình bày |
+| Output file | What to highlight |
 | --- | --- |
-| `summary.md` | Thời gian UTC, phiên bản Python, từng lệnh và mã thoát khi lỗi |
-| `finops-tests.log` | Kiểm thử dữ liệu thiếu, credit, currency, thông báo và báo cáo |
-| `digest-tests.log` | Chỉ chấp nhận bộ digest đầy đủ và đúng source revision |
-| `weekly-report.md` | OpenCost $89.47 và CUR $140.00, hiển thị riêng |
-| `cloud-report.md` | AWS/GCP/Azure, tổng 43.75 USD trong mỗi tuần |
-| `waste-report.md` | Bốn tài nguyên ứng viên, ước tính $27.88/tháng với mức giá minh họa mặc định |
+| `summary.md` | UTC start timestamp, Python version, each executed command, and nonzero exit code on failure |
+| `finops-tests.log` | Unit tests covering missing billing days, negative credits, multi-currency totals, notifications, and report formatting |
+| `digest-tests.log` | Release-record checks enforcing complete service digest sets, source revision matching, and overlay promotion updates |
+| `weekly-report.md` | OpenCost (`$89.47` vs `$104.00`) and AWS CUR (`$140.00` vs `$165.00`) shown separately rather than summed |
+| `cloud-report.md` | Normalized AWS/GCP/Azure FOCUS CSV comparison totaling `43.75 USD` in each 7-day window |
+| `waste-report.md` | Four Cloud Custodian candidates (`~$27.88/month` at illustrative default rates) |
 
-Nếu đã đặt biến môi trường giá waste, chúng vẫn được CLI sử dụng; xóa các override trước khi đối chiếu số mặc định. Script dừng ngay khi một lệnh lỗi, trả mã thoát khác 0 và giữ log. Chỉ trình bày kết quả thành công sau khi đọc `summary.md`.
+If waste-pricing environment variables (`EBS_GB_MONTH_RATE`, `EIP_HOURLY_RATE`, `SNAPSHOT_GB_MONTH_RATE`, `ALB_HOURLY_RATE`) are set in your shell, the CLI honors them; clear overrides before comparing against default fixture numbers. The runner halts immediately if any command exits nonzero and preserves partial logs. Verify `summary.md` before presenting results.
 
-## Kịch bản trình bày
+To preview cloud lab readiness, itemized `ap-southeast-1` hourly/session/30-day `Decimal` cost estimates, and a dry-run evidence template without touching cloud credentials, run:
 
-| Thời gian | Mở gì | Nội dung |
+```bash
+python scripts/cloud_lab_preflight.py --env nonprod --hours 2
+python scripts/cloud_lab_runner.py --dry-run
+```
+
+## 5-Minute Walkthrough Script
+
+| Time | What to open | Talking points |
 | --- | --- | --- |
-| 0:00–0:45 | [Sơ đồ kiến trúc](architecture/overview.md) | Online Boutique là ứng dụng mẫu của Google. Phần đóng góp là hạ tầng, CI/GitOps, policy, FinOps và kiểm chứng. Phân biệt mã nguồn, image và desired state. |
-| 0:45–1:30 | Terminal chạy demo và `summary.md` | Cho thấy các lệnh thực sự chạy. Bộ demo hiện chạy 42 test FinOps và 6 test digest; số lượng có thể tăng khi phát triển. Đây là kiểm thử offline. |
-| 1:30–2:30 | Hai báo cáo chi phí | Giải thích OpenCost phân bổ theo workload, CUR phản ánh billing và hai nguồn có thể trùng nhau. Không cộng tổng. Mở `finops-toolkit/tests/test_athena.py`, chỉ ra kỳ thiếu ngày phải bị từ chối thay vì coi là chi phí 0. |
-| 2:30–3:30 | Root `.github/workflows/ci.yml`, `release.yml` và `digest-tests.log` | Push main chỉ validate/build/scan. Tag `v0.9` yêu cầu main đã validate trước khi publish. Operator review digest và mở PR GitOps; tự động promotion chưa được chuyển sang monorepo. |
-| 3:30–4:30 | `frontend-rollout.yaml`, `analysis-template.yaml` và [rollback runbook](runbooks/rollback-thu-cong.md) | Giải thích canary dùng probe `/`, trọng số theo replica gần đúng. Abort không tự sửa desired state trong Git; cần revert PR. Đây là walkthrough cấu hình, chưa phải canary chạy thật. |
-| 4:30–5:00 | [Bằng chứng hiện tại](evidence/portfolio-readiness-2026-11-16.md) | Nêu phần đã kiểm chứng, phần chưa chạy, Redis ephemeral và giới hạn chi phí. Lab EKS phải có tài khoản/quyền, đường mạng private và ngân sách phù hợp. |
+| 0:00–0:45 | [Architecture overview](architecture/overview.md) | Online Boutique is Google's sample microservice storefront; original project work covers Terraform infrastructure, CI/GitOps delivery, Kyverno/NetworkPolicy guardrails, FinOps reporting, and test harnesses. Separate source code, immutable container digests, and Git desired state. |
+| 0:45–1:30 | Terminal output and `summary.md` | Show real offline commands executing locally (FinOps unit suite and release-digest promotion tests). State clearly that these run against local fixtures without cloud credentials. |
+| 1:30–2:30 | `weekly-report.md` and `cloud-report.md` | Explain why OpenCost Kubernetes workload allocations and AWS CUR billing overlap and must never be added together. Open `finops-toolkit/tests/test_athena.py` to show how incomplete 14-day windows fail fast instead of treating missing days as `$0`. |
+| 2:30–3:30 | Root `.github/workflows/ci.yml`, `release.yml`, `promote-images.yml`, and `digest-tests.log` | `main` pushes validate, build, and Trivy-scan without pushing images. Tag `v0.9` verifies a green `Release validation` run on `main`, publishes signed/scanned GHCR digests, and invokes `promote-images.yml` to open a reviewed GitOps PR updating Kustomize overlays (`dev`, `staging`, `prod`, `preview`) and `finops-reporter`. |
+| 3:30–4:30 | `frontend-rollout.yaml`, `analysis-template.yaml`, and [manual rollback runbook](runbooks/rollback-thu-cong.md) | Explain the `/` blackbox probe and replica-based canary weights. Note that an automatic Rollout abort keeps stable pods serving while Git still references the failed candidate until a revert PR restores desired state. |
+| 4:30–5:00 | [Readiness record](evidence/portfolio-readiness-2026-11-16.md) and `cloud_lab_preflight.py` | Summarize verified offline checks versus live cloud prerequisites: private EKS API routing, `TF_VAR_break_glass_role_arn` for initial Argo CD bootstrap, ephemeral Redis/nonprod Prometheus tradeoffs, and explicit hourly lab costs. |
 
-## Các câu hỏi nên trả lời được
+## Questions You Should Be Ready to Answer
 
-- Tại sao triển khai theo digest thay vì chỉ dùng tag? Bộ digest thiếu service phải xử lý thế nào?
-- Tại sao không cộng OpenCost và CUR? Credit âm và ngày thiếu dữ liệu ảnh hưởng báo cáo ra sao?
-- Tại sao production sync thủ công? Canary abort khác Git revert ở đâu?
-- Downscaler giảm replica có bảo đảm giảm hóa đơn EC2 không?
-- Nếu Redis hoặc Prometheus nonprod bị thay Pod, dữ liệu nào có thể mất?
+- Why deploy immutable `@sha256` digests in Kustomize overlays instead of mutable tags, and how does `scanned-images.py` handle an incomplete service artifact set?
+- Why must OpenCost allocations and AWS CUR unblended totals remain separate, and how do negative credits or missing daily partitions affect weekly comparisons?
+- Why does `prod` require manual Argo CD sync and a mandatory monthly `TF_VAR_budget`, and how does a canary abort differ from a Git revert?
+- Does scaling replicas to zero after hours (`GoKubeDownscaler`) automatically reduce EC2 spend on fixed-size managed node groups?
+- What state is lost when an ephemeral Redis or nonprod Prometheus pod restarts, and why does production Prometheus use a `Retain` `gp3` volume?
 
-Muốn trình bày checkout thật, phải chạy smoke command đối với storefront đã triển khai theo [runbook](runbooks/khoi-phuc-cluster-tu-git.md). Demo offline không chạy các kiểm thử socket, không provision cluster và không gửi thông báo.
+To demonstrate a live storefront checkout, provision a cluster with [cluster rebuild from Git](runbooks/khoi-phuc-cluster-tu-git.md) and run `smoke-checkout.py` against the port-forwarded frontend. The offline demo does not bind network sockets, provision cloud infrastructure, or send external alert notifications.

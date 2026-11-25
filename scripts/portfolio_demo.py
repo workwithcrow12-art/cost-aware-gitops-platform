@@ -33,6 +33,7 @@ def run_demo(output: Path, steps: list) -> int:
         f"Python: {sys.version.split()[0]}",
         "Working directory: monorepo root", "",
         "Synthetic fixtures only. No cloud deployment or measured savings are established.",
+        "For cloud lab readiness and dry-run evidence templates, run `python scripts/cloud_lab_preflight.py` and `python scripts/cloud_lab_runner.py --dry-run`.",
         "Commands below use shell notation; Python uses the current interpreter.", "",
     ]
     for name, command in steps:

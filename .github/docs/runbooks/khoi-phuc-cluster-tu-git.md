@@ -1,56 +1,83 @@
-# Rebuild the nonprod cluster
+# Rebuild the AWS EKS Cluster from Git
 
-Use an AWS lab account and check your account identity and budget before provisioning. The control
-plane and network resources incur charges while the cluster exists. Clone the monorepo, then run
-the infrastructure commands below from `platform-infra`. Its sibling `gitops-config` contains desired state.
-Use the [AWS lab evidence checklist](aws-lab-evidence.md) to record prerequisites and results.
+Use a dedicated AWS sandbox or target account and verify caller identity, region, and budget guardrails before creating infrastructure. EKS control planes, EC2 worker nodes, NAT Gateways, EBS volumes, KMS keys, and CloudWatch Logs accrue hourly charges while provisioned.
 
-The dev and staging workloads run from 08:00 to 20:00 on weekdays in Asia/Ho_Chi_Minh.
-For a demo outside that window, temporarily commit `downscaler/force-uptime: "true"` on the dev Namespace and revert it after the exercise.
+## 0. Run Offline Preflight and Dry-Run Evidence Setup
 
-1. If this account lacks a Terraform state backend, create one from `platform-infra`.
+From the monorepo root, run the Cloud Lab Readiness Kit to check CLI binaries (`terraform`, `kubectl`, `helm`, `kubeseal`, `aws`), required environment variables, private API routing requirements, and `ap-southeast-1` `Decimal` cost estimates:
 
-   ```bash
-   terraform -chdir=bootstrap/state-backend init
-   terraform -chdir=bootstrap/state-backend apply
-   ```
+```bash
+python scripts/cloud_lab_preflight.py --env nonprod --hours 2 --verify-identity --strict
+python scripts/cloud_lab_runner.py --env nonprod --dry-run
+```
 
-   Reuse the existing state bucket and keys when recovering an existing environment.
+Use the [AWS lab evidence checklist](aws-lab-evidence.md) to record timestamps, commit SHAs, and redacted logs. Note that `dev` and `staging` workloads run `08:00–20:00` on weekdays in `Asia/Ho_Chi_Minh` (`GoKubeDownscaler`). For an exercise outside that window, temporarily commit `downscaler/force-uptime: "true"` on the `boutique-dev` Namespace and revert it before finishing.
 
-2. Set the backend settings, the operator IAM role and the source CIDR that can reach the private EKS API.
-   Run bootstrap from a host with routed access and DNS resolution in the VPC.
+## 1. Create or Reuse the Terraform State Backend
 
-   ```bash
-   export STATE_BUCKET="$(terraform -chdir=bootstrap/state-backend output -raw state_bucket_name)"
-   export STATE_BUCKET_REGION="$(terraform -chdir=bootstrap/state-backend output -raw state_bucket_region)"
-   export TF_VAR_operator_role_arn='arn:aws:iam::123456789012:role/ClusterOperator'
-   export TF_VAR_operator_access_cidrs='["10.20.1.0/24"]'
-   make plan ENV=nonprod
-   make apply ENV=nonprod
-   ```
+If the AWS account does not yet have the shared S3 state backend and account-level AWS Budget, provision `bootstrap/state-backend` once from `platform-infra`:
 
-3. Bootstrap Argo CD with the checked-out config repository while authenticated as the operator.
-   Set `EKS_OPERATOR_PROFILE` if you use a separate AWS CLI profile for this role.
+```bash
+cd platform-infra
+terraform -chdir=bootstrap/state-backend init
+terraform -chdir=bootstrap/state-backend apply
+```
 
-   ```bash
-   bash scripts/bootstrap-argocd.sh nonprod ../gitops-config
-   kubectl -n argocd get applications,applicationsets
-   ```
+When rebuilding an existing environment, always reuse the existing state bucket and state keys rather than creating orphaned duplicate infrastructure.
 
-4. Create and commit the sealed Redis credential for dev using the GitOps README. Wait for the dev application
-   to become healthy, then use a local port forward to verify that the storefront responds.
+## 2. Configure Least-Privilege Operator, Break-Glass Admin, and Budget Inputs
 
-   ```bash
-   kubectl -n boutique-dev get rollout frontend
-   kubectl -n boutique-dev port-forward svc/frontend 8080:8080
-   ```
+Routine cluster access (`TF_VAR_operator_role_arn`) defaults to read-only `AmazonEKSViewPolicy` (`var.operator_access_policy` supports `AmazonEKSViewPolicy` or `AmazonEKSEditPolicy`). Because initial Helm/Argo CD installation requires cluster-scoped RBAC and CRD creation, also supply a distinct IAM role ARN via `TF_VAR_break_glass_role_arn`, which grants `AmazonEKSClusterAdminPolicy` for bootstrap and emergency break-glass recovery.
 
-   Open `http://localhost:8080` after the port forward starts. In a separate terminal, run the checkout smoke test from the `boutique-app` checkout:
+From `platform-infra`:
 
-   ```bash
-   python .github/scripts/smoke-checkout.py --base-url http://localhost:8080
-   ```
+```bash
+export STATE_BUCKET="$(terraform -chdir=bootstrap/state-backend output -raw state_bucket_name)"
+export STATE_BUCKET_REGION="$(terraform -chdir=bootstrap/state-backend output -raw state_bucket_region)"
+export TF_VAR_operator_role_arn='arn:aws:iam::123456789012:role/ClusterOperatorView'
+export TF_VAR_break_glass_role_arn='arn:aws:iam::123456789012:role/ClusterBreakGlassAdmin'
+export TF_VAR_operator_access_cidrs='["10.20.1.0/24"]'
 
-   Keep its exit status and deployed image revision with the lab evidence. This creates a synthetic order using the demo payment and email services.
-5. Record the Terraform start time, Argo CD bootstrap time and first successful storefront response.
-   For a disposable lab, use the teardown procedure in the infrastructure README.
+# Required when ENV=prod (optional but recommended in nonprod):
+# export TF_VAR_budget='{"monthly_limit_usd":500,"email":"finops@example.com"}'
+
+make plan ENV=nonprod
+make apply ENV=nonprod
+```
+
+> **Production note (`ENV=prod`):** `platform-infra/envs/prod` requires a non-null `TF_VAR_budget` (`monthly_limit_usd > 0` and notification `email`) and defaults `nat_per_az = true` (`3 × $0.059/hr` NAT Gateways in `ap-southeast-1`, `~$127–$129/month` fixed baseline before per-GB charges; set `TF_VAR_nat_per_az=false` only if explicitly trading multi-AZ egress isolation for lower fixed NAT cost). Alternatively, trigger root `.github/workflows/terraform-apply.yml` once OIDC roles, `vars.TF_PROD_BUDGET_JSON`, and GitHub Environment reviewers are configured.
+
+## 3. Bootstrap Argo CD over the Private EKS Endpoint
+
+Run `bootstrap-argocd.sh` from a host inside the VPC (for example, an SSM Session Manager host) or over VPN with routed access and private DNS resolution matching `TF_VAR_operator_access_cidrs`. Authenticate `EKS_OPERATOR_PROFILE` as the `TF_VAR_break_glass_role_arn` role so Helm and `kubectl` have `AmazonEKSClusterAdminPolicy` during initial installation:
+
+```bash
+export EKS_OPERATOR_PROFILE='break-glass-admin'
+bash scripts/bootstrap-argocd.sh nonprod ../gitops-config
+kubectl -n argocd get applications,applicationsets
+```
+
+After bootstrap completes, switch day-to-day inspection sessions back to the least-privilege `TF_VAR_operator_role_arn` profile.
+
+## 4. Seal Cluster Credentials and Run the Storefront Checkout Smoke Test
+
+Generate and commit the cluster-bound `redis-cart` SealedSecret for `dev` following [gitops-config/README.md](../../../gitops-config/README.md). Overlays in `gitops-config/apps/boutique/overlays/{dev,staging,prod,preview}` already pin verified `v0.9` GHCR `@sha256` digests. Once `boutique-dev` reconciles to `Healthy`, start a local port-forward:
+
+```bash
+kubectl -n boutique-dev get rollout frontend
+kubectl -n boutique-dev port-forward svc/frontend 8080:8080
+```
+
+In a second terminal from the monorepo root, execute the automated smoke stage via `cloud_lab_runner.py` (which records UTC start/end timestamps and redacts account IDs/ARNs/tokens from saved logs) or invoke `smoke-checkout.py` directly:
+
+```bash
+python scripts/cloud_lab_runner.py --env nonprod --execute-stage smoke --base-url http://localhost:8080
+# Equivalent direct smoke command:
+python boutique-app/.github/scripts/smoke-checkout.py --base-url http://localhost:8080
+```
+
+This places one synthetic order through the mock payment and email services and verifies cart clearing.
+
+## 5. Record Recovery Timing and Tear Down Disposable Labs
+
+Record the Terraform start timestamp, Argo CD bootstrap completion timestamp, and first passing checkout smoke response to measure end-to-end cluster rebuild time. For disposable lab runs, clean up Kubernetes-created LoadBalancers and PVCs first, then follow the teardown procedure in [platform-infra/README.md](../../../platform-infra/README.md#tear-down).

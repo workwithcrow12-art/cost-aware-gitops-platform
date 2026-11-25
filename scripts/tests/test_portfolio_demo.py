@@ -25,6 +25,7 @@ class PortfolioDemoTests(unittest.TestCase):
             self.assertIn("OK", (output / "finops-tests.log").read_text())
             self.assertIn("OK", (output / "digest-tests.log").read_text())
             self.assertIn("PASS", (output / "summary.md").read_text())
+            self.assertIn("cloud_lab_preflight.py", (output / "summary.md").read_text())
             original = (output / "summary.md").read_bytes()
             repeated = subprocess.run(
                 [sys.executable, str(SCRIPT), "--output-dir", str(output)],
